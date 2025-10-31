@@ -47,18 +47,27 @@ async function initGame() {
 
 // 初始化地图
 function initMap() {
-    gameState.map = L.map('gameMap').setView([39.9042, 116.4074], 13);
+    gameState.map = L.map('gameMap', {
+        zoomControl: true,
+        attributionControl: false,
+        zoomAnimation: true,
+        fadeAnimation: true,
+        markerZoomAnimation: true
+    }).setView([39.9042, 116.4074], 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
-        maxZoom: 19
+        maxZoom: 19,
+        minZoom: 3,
+        updateWhenIdle: true,
+        keepBuffer: 2
     }).addTo(gameState.map);
 
     // 地图点击事件
     gameState.map.on('click', (e) => {
         const { lat, lng } = e.latlng;
         showModal('选择操作', `
-            <p>位置: ${lat.toFixed(6)}, ${lng.toFixed(6)}</p>
+            <p style="color: var(--text-gray); margin-bottom: 15px;">位置: ${lat.toFixed(6)}, ${lng.toFixed(6)}</p>
         `, [
             { text: '生成案件', class: 'btn-primary', action: () => generateCasesAtLocation(lat, lng) },
             { text: '发送信号', class: 'btn-success', action: () => showSignalForm(lat, lng) },
@@ -66,10 +75,17 @@ function initMap() {
         ]);
     });
 
-    // 修复地图大小
+    // 修复地图大小（延迟更短）
     setTimeout(() => {
         gameState.map.invalidateSize();
-    }, 500);
+    }, 300);
+
+    // 监听窗口调整
+    window.addEventListener('resize', () => {
+        setTimeout(() => {
+            gameState.map.invalidateSize();
+        }, 100);
+    });
 }
 
 // 获取当前位置
@@ -321,11 +337,14 @@ function renderAchievements() {
     `).join('');
 }
 
-// 更新地图标记
+// 更新地图标记（优化性能）
 function updateMapMarkers() {
     // 清除旧标记
     gameState.markers.forEach(marker => gameState.map.removeLayer(marker));
     gameState.markers = [];
+
+    // 批量添加标记，减少重绘
+    const markersToAdd = [];
 
     // 添加案件标记
     gameState.cases.forEach(c => {
@@ -336,18 +355,18 @@ function updateMapMarkers() {
             weight: 2,
             opacity: 1,
             fillOpacity: 0.8
-        }).addTo(gameState.map);
+        });
 
         marker.bindPopup(`
-            <div style="min-width: 150px;">
-                <h4>${c.icon} ${c.type}</h4>
-                <p><strong>严重程度:</strong> ${c.severity}</p>
-                <p><strong>奖励:</strong> ${c.reward} EXP</p>
-                ${c.distance ? `<p><strong>距离:</strong> ${c.distance.toFixed(2)} km</p>` : ''}
+            <div style="min-width: 150px; color: #333;">
+                <h4 style="margin: 0 0 10px 0;">${c.icon} ${c.type}</h4>
+                <p style="margin: 5px 0;"><strong>严重程度:</strong> ${c.severity}</p>
+                <p style="margin: 5px 0;"><strong>奖励:</strong> ${c.reward} EXP</p>
+                ${c.distance ? `<p style="margin: 5px 0;"><strong>距离:</strong> ${c.distance.toFixed(2)} km</p>` : ''}
             </div>
         `);
 
-        gameState.markers.push(marker);
+        markersToAdd.push(marker);
     });
 
     // 添加信号标记
@@ -359,16 +378,22 @@ function updateMapMarkers() {
             weight: 2,
             opacity: 1,
             fillOpacity: 0.6
-        }).addTo(gameState.map);
+        });
 
         marker.bindPopup(`
-            <div style="min-width: 150px;">
-                <h4>📡 ${s.name}</h4>
-                <p><strong>类型:</strong> ${s.type}</p>
-                <p><strong>强度:</strong> ${s.strength}%</p>
+            <div style="min-width: 150px; color: #333;">
+                <h4 style="margin: 0 0 10px 0;">📡 ${s.name}</h4>
+                <p style="margin: 5px 0;"><strong>类型:</strong> ${s.type}</p>
+                <p style="margin: 5px 0;"><strong>强度:</strong> ${s.strength}%</p>
             </div>
         `);
 
+        markersToAdd.push(marker);
+    });
+
+    // 批量添加到地图
+    markersToAdd.forEach(marker => {
+        marker.addTo(gameState.map);
         gameState.markers.push(marker);
     });
 }
@@ -637,15 +662,66 @@ function setupEventListeners() {
     });
 }
 
+// 防抖函数
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// 节流函数
+function throttle(func, limit) {
+    let inThrottle;
+    return function(...args) {
+        if (!inThrottle) {
+            func.apply(this, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    };
+}
+
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
     initGame();
+
+    // 防止意外的页面刷新
+    let lastTouchY = 0;
+    const el = document.body;
+
+    el.addEventListener('touchstart', (e) => {
+        lastTouchY = e.touches[0].clientY;
+    }, { passive: true });
+
+    el.addEventListener('touchmove', (e) => {
+        const touchY = e.touches[0].clientY;
+        const touchYDelta = touchY - lastTouchY;
+        lastTouchY = touchY;
+
+        // 阻止下拉刷新
+        if (el.scrollTop === 0 && touchYDelta > 0) {
+            e.preventDefault();
+        }
+    }, { passive: false });
 });
 
-// 防止iOS下拉刷新
-document.addEventListener('touchmove', function(e) {
-    if (e.target.closest('.main-container') || e.target.closest('#gameMap')) {
-        return;
+// 页面可见性改变时的优化
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        // 页面隐藏时可以暂停某些操作
+        console.log('页面隐藏');
+    } else {
+        // 页面显示时刷新地图
+        if (gameState.map) {
+            setTimeout(() => {
+                gameState.map.invalidateSize();
+            }, 100);
+        }
     }
-    e.preventDefault();
-}, { passive: false });
+});

@@ -98,8 +98,28 @@
         /* 地图 */
         #gameMap {
             width: 100%;
-            height: 300px;
+            height: 40vh;
+            min-height: 250px;
+            max-height: 400px;
             position: relative;
+        }
+
+        /* 地图控制优化 */
+        .leaflet-container {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .leaflet-touch .leaflet-control-layers,
+        .leaflet-touch .leaflet-bar {
+            border: 2px solid rgba(0,0,0,0.3);
+        }
+
+        .leaflet-touch .leaflet-control-zoom-in,
+        .leaflet-touch .leaflet-control-zoom-out {
+            font-size: 22px;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
         }
 
         /* 统计卡片 */
@@ -144,15 +164,21 @@
 
         .tab {
             flex: 1;
-            padding: 15px;
+            padding: 16px 10px;
             text-align: center;
             background: transparent;
             border: none;
             color: var(--text-gray);
-            font-size: 14px;
+            font-size: 15px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
             position: relative;
+            min-height: 50px;
+            touch-action: manipulation;
+        }
+
+        .tab:active {
+            background: rgba(255,255,255,0.05);
         }
 
         .tab.active {
@@ -185,10 +211,15 @@
         .case-card {
             background: var(--bg-card);
             border-radius: 12px;
-            padding: 15px;
+            padding: 18px;
             margin-bottom: 15px;
             border-left: 4px solid var(--primary-blue);
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .case-card:active {
+            transform: scale(0.98);
         }
 
         .case-header {
@@ -242,15 +273,20 @@
 
         /* 按钮 */
         .btn {
-            padding: 10px 20px;
+            padding: 14px 20px;
             border: none;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: bold;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
             flex: 1;
             text-align: center;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
         }
 
         .btn-primary {
@@ -277,6 +313,36 @@
             cursor: not-allowed;
         }
 
+        /* 输入框优化 */
+        input, select, textarea {
+            padding: 14px 12px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            font-size: 16px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        input::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        select {
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 20px;
+            padding-right: 40px;
+        }
+
         /* 底部导航 */
         .bottom-nav {
             position: fixed;
@@ -299,11 +365,17 @@
             flex-direction: column;
             align-items: center;
             gap: 4px;
-            padding: 8px;
+            padding: 10px 8px;
             color: var(--text-gray);
             text-decoration: none;
             font-size: 12px;
-            transition: color 0.3s;
+            transition: all 0.2s;
+            touch-action: manipulation;
+        }
+
+        .nav-item:active {
+            background: rgba(255,255,255,0.05);
+            transform: scale(0.95);
         }
 
         .nav-item.active {
@@ -318,12 +390,17 @@
         .achievement-card {
             background: var(--bg-card);
             border-radius: 12px;
-            padding: 15px;
+            padding: 18px;
             margin-bottom: 15px;
             display: flex;
             align-items: center;
             gap: 15px;
             border: 1px solid rgba(255, 193, 7, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .achievement-card:active {
+            transform: scale(0.98);
         }
 
         .achievement-icon {
@@ -369,23 +446,26 @@
             position: fixed;
             bottom: 90px;
             right: 20px;
-            width: 56px;
-            height: 56px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
             background: linear-gradient(135deg, var(--accent), #ff9800);
             color: var(--bg-dark);
             border: none;
-            font-size: 24px;
+            font-size: 26px;
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
             z-index: 999;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            touch-action: manipulation;
         }
 
         .fab:active {
-            transform: scale(0.9);
+            transform: scale(0.88);
+            box-shadow: 0 2px 8px rgba(255, 193, 7, 0.6);
         }
 
         /* 通知 */
@@ -480,9 +560,14 @@
         .signal-item {
             background: var(--bg-card);
             border-radius: 12px;
-            padding: 15px;
+            padding: 18px;
             margin-bottom: 12px;
             border-left: 4px solid var(--success);
+            transition: transform 0.2s;
+        }
+
+        .signal-item:active {
+            transform: scale(0.98);
         }
 
         .signal-header {
@@ -524,6 +609,54 @@
         @supports (padding: max(0px)) {
             .main-container {
                 padding-bottom: max(15px, env(safe-area-inset-bottom));
+            }
+        }
+
+        /* 小屏幕优化 */
+        @media (max-width: 375px) {
+            .navbar-title {
+                font-size: 18px;
+            }
+
+            .player-info {
+                font-size: 12px;
+            }
+
+            .stat-value {
+                font-size: 22px;
+            }
+
+            .case-title {
+                font-size: 16px;
+            }
+
+            #gameMap {
+                height: 35vh;
+                min-height: 200px;
+            }
+        }
+
+        /* 横屏优化 */
+        @media (orientation: landscape) and (max-height: 500px) {
+            #gameMap {
+                height: 50vh;
+                max-height: 300px;
+            }
+
+            .main-container {
+                top: 50px;
+            }
+
+            .navbar {
+                height: 50px;
+            }
+
+            .stats-grid {
+                padding: 10px 15px;
+            }
+
+            .stat-card {
+                padding: 10px 8px;
             }
         }
     </style>
