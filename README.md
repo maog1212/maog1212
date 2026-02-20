@@ -9,13 +9,21 @@
 2. 打开 Termux，允许「安装未知来源应用」权限
 3. 连接 Wi-Fi
 
-### 一键部署（只需一条命令）
+### 一键部署（分两步执行，避免手机换行报错）
 
-在 Termux 中复制粘贴以下命令：
+在 Termux 中**依次**复制粘贴以下两条命令：
 
 ```bash
-curl -sL https://raw.githubusercontent.com/maog1212/maog1212/claude/android-nexuscore-deployment-rMPtN/nexuscore-deploy.sh | bash
+# 第一步：下载脚本
+curl -sL https://raw.githubusercontent.com/maog1212/maog1212/claude/android-nexuscore-deployment-rMPtN/nexuscore-deploy.sh -o ~/nc.sh
 ```
+
+```bash
+# 第二步：运行脚本
+bash ~/nc.sh
+```
+
+> **为什么分两步？** 手机屏幕较窄，一行长命令复制时容易在 URL 和 `|` 之间自动插入换行符，导致 `bash: syntax error near unexpected token '|'` 报错。分两步即可避免。
 
 脚本会自动完成：
 - 配置清华大学国内镜像（加速下载）
