@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#07071a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VoiceChart">
+<meta name="description" content="语音生成流程图 · Open-source voice-to-flowchart">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>VoiceChart</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:     #07071a;
+  --card:   rgba(255,255,255,0.04);
+  --card2:  rgba(255,255,255,0.08);
+  --border: rgba(255,255,255,0.08);
+  --bora:   rgba(129,140,248,0.45);
+  --pri:    #818cf8;
+  --priD:   rgba(129,140,248,0.14);
+  --cyan:   #22d3ee;
+  --cyanD:  rgba(34,211,238,0.12);
+  --green:  #34d399;
+  --red:    #f87171;
+  --amber:  #fbbf24;
+  --text:   #f1f5f9;
+  --muted:  #94a3b8;
+  --muted2: #64748b;
+  --r: 12px; --rsm: 8px;
+}
+html,body { height:100%; }
+body {
+  font-family: 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background: var(--bg); color: var(--text);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(ellipse 55% 35% at 10% 12%, rgba(129,140,248,.13) 0%,transparent 60%),
+    radial-gradient(ellipse 45% 30% at 88% 80%, rgba(34,211,238,.09) 0%,transparent 60%);
+}
+input, textarea, select { user-select: text; }
+
+/* ── Setup overlay ─────────────────────────────────────────── */
+#setup {
+  position:fixed; inset:0; z-index:200;
+  display:flex; align-items:center; justify-content:center; padding:20px;
+  background: rgba(7,7,26,0.97);
+  backdrop-filter: blur(20px);
+}
+#setup.hidden { display:none; }
+.setup-card {
+  width:100%; max-width:420px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(129,140,248,0.25);
+  border-radius: 20px;
+  padding: 36px 28px;
+  display:flex; flex-direction:column; gap:20px;
+}
+.setup-logo { display:flex; align-items:center; gap:12px; }
+.setup-logo .ico {
+  width:48px; height:48px;
+  background: linear-gradient(135deg,var(--pri),var(--cyan));
+  border-radius:14px;
+  display:flex; align-items:center; justify-content:center; font-size:24px;
+}
+.setup-logo h1 {
+  font-size:22px; font-weight:800;
+  background:linear-gradient(135deg,var(--pri),var(--cyan));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.setup-desc { font-size:14px; color:var(--muted); line-height:1.7; }
+.setup-field { display:flex; flex-direction:column; gap:8px; }
+.setup-field label { font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; }
+.setup-input {
+  width:100%; padding:12px 14px;
+  background: var(--card2); border:1px solid var(--border);
+  border-radius:var(--rsm); color:var(--text);
+  font-size:15px; font-family:inherit; outline:none;
+  transition: border-color .2s;
+}
+.setup-input:focus { border-color:var(--bora); }
+.setup-input::placeholder { color:var(--muted2); }
+.setup-btn {
+  padding:14px; border-radius:var(--rsm); border:none;
+  background: linear-gradient(135deg,var(--pri),#6366f1);
+  color:#fff; font-size:15px; font-weight:700;
+  cursor:pointer; transition:all .2s;
+  box-shadow: 0 4px 18px rgba(129,140,248,.35);
+  touch-action:manipulation;
+}
+.setup-btn:hover { transform:translateY(-1px); box-shadow:0 6px 26px rgba(129,140,248,.5); }
+.setup-hint {
+  font-size:12px; color:var(--muted2); text-align:center; line-height:1.6;
+}
+.setup-hint a { color:var(--pri); text-decoration:none; }
+
+/* ── App ────────────────────────────────────────────────────── */
+.app {
+  position:relative; z-index:1;
+  display:flex; flex-direction:column; height:100dvh;
+}
+
+/* Header */
+header {
+  display:flex; align-items:center; gap:10px;
+  padding:11px 16px;
+  border-bottom:1px solid var(--border);
+  background:rgba(7,7,26,.88); backdrop-filter:blur(20px);
+  flex-shrink:0; z-index:100;
+}
+.logo { display:flex; align-items:center; gap:9px; }
+.logo-ico {
+  width:30px; height:30px;
+  background:linear-gradient(135deg,var(--pri),var(--cyan));
+  border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:15px; flex-shrink:0;
+}
+.logo-name {
+  font-size:16px; font-weight:800;
+  background:linear-gradient(135deg,var(--pri),var(--cyan));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.hdr-badge {
+  display:flex; align-items:center; gap:5px;
+  padding:3px 9px; border-radius:100px; border:1px solid var(--border);
+  background:var(--card); font-size:11px; font-weight:600; color:var(--muted);
+  transition:all .3s;
+}
+.hdr-badge .dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
+.hdr-badge.ok    { border-color:rgba(52,211,153,.4); color:var(--green); background:rgba(52,211,153,.08); }
+.hdr-badge.local { border-color:rgba(129,140,248,.4); color:var(--pri);   background:var(--priD); }
+
+.hdr-right { display:flex; gap:8px; align-items:center; margin-left:auto; }
+.hdr-btn {
+  width:32px; height:32px; border-radius:8px;
+  border:1px solid var(--border); background:var(--card);
+  color:var(--muted); cursor:pointer; font-size:14px;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .2s; touch-action:manipulation; outline:none;
+}
+.hdr-btn:hover { background:var(--card2); color:var(--text); }
+
+/* Lang toggle */
+.lang-toggle {
+  display:flex; background:var(--card);
+  border:1px solid var(--border); border-radius:100px; padding:3px; gap:2px;
+}
+.lang-btn {
+  padding:4px 10px; border-radius:100px; border:none;
+  background:transparent; color:var(--muted);
+  font-size:11px; font-weight:700; cursor:pointer; transition:all .2s;
+  touch-action:manipulation;
+}
+.lang-btn.on { background:var(--priD); color:var(--pri); }
+
+/* Style bar */
+.style-bar {
+  display:flex; gap:6px; padding:9px 14px;
+  border-bottom:1px solid var(--border);
+  overflow-x:auto; scrollbar-width:none; flex-shrink:0;
+}
+.style-bar::-webkit-scrollbar { display:none; }
+.spill {
+  display:flex; align-items:center; gap:6px;
+  padding:7px 13px; border-radius:100px;
+  border:1px solid var(--border); background:var(--card);
+  color:var(--muted); cursor:pointer;
+  font-size:12px; font-weight:600; white-space:nowrap;
+  transition:all .2s; touch-action:manipulation;
+}
+.spill:hover  { border-color:var(--bora); background:var(--priD); color:var(--pri); }
+.spill.on     { border-color:var(--pri); background:var(--priD); color:var(--pri);
+                box-shadow:0 0 14px rgba(129,140,248,.2); }
+
+/* Workspace */
+.workspace { display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; }
+@media(min-width:860px) {
+  .workspace { display:grid; grid-template-columns:385px 1fr; }
+}
+
+/* Output panel */
+.out-panel {
+  flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden;
+  order:-1; /* top on mobile */
+}
+@media(min-width:860px) { .out-panel { order:0; } }
+
+/* Input panel */
+.in-panel {
+  display:flex; flex-direction:column; gap:11px;
+  padding:14px; overflow-y:auto;
+  border-top:1px solid var(--border);
+  flex-shrink:0; max-height:46dvh;
+}
+@media(min-width:860px) {
+  .in-panel {
+    border-right:1px solid var(--border);
+    border-top:none; max-height:none;
+    order:-1;
+  }
+}
+
+/* Mic section */
+.mic-area {
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+  padding:18px 16px 14px;
+  background:var(--card); border:1px solid var(--border); border-radius:var(--r);
+}
+.ring-wrap { position:relative; width:100px; height:100px; }
+.ring {
+  position:absolute; inset:0; border-radius:50%;
+  border:2px solid var(--pri); opacity:0;
+}
+.ring.go { animation:ripple 1.6s ease-out infinite; }
+.ring:nth-child(2).go { animation-delay:.53s; }
+.ring:nth-child(3).go { animation-delay:1.06s; }
+@keyframes ripple { 0%{transform:scale(1);opacity:.7} 100%{transform:scale(1.65);opacity:0} }
+.mic-btn {
+  position:absolute; inset:9px; border-radius:50%; border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; font-size:30px;
+  background:linear-gradient(135deg,#3730a3,#1e3a8a);
+  box-shadow:0 0 26px rgba(129,140,248,.27),inset 0 1px 0 rgba(255,255,255,.1);
+  transition:all .25s; touch-action:manipulation; outline:none;
+}
+.mic-btn:hover { transform:scale(1.06); }
+.mic-btn.rec {
+  background:linear-gradient(135deg,#dc2626,#991b1b);
+  animation:mglow 1.2s ease-in-out infinite;
+}
+@keyframes mglow {
+  0%,100%{box-shadow:0 0 26px rgba(239,68,68,.35),inset 0 1px 0 rgba(255,255,255,.1)}
+  50%{box-shadow:0 0 48px rgba(239,68,68,.65),inset 0 1px 0 rgba(255,255,255,.15)}
+}
+.waveform { display:flex; align-items:center; gap:3px; height:26px; opacity:0; transition:opacity .3s; }
+.waveform.on { opacity:1; }
+.wb { width:3px; border-radius:2px; background:var(--pri); height:4px; }
+.waveform.on .wb { animation:wa .9s ease-in-out infinite; }
+.wb:nth-child(1){animation-delay:0s}.wb:nth-child(2){animation-delay:.09s}
+.wb:nth-child(3){animation-delay:.18s}.wb:nth-child(4){animation-delay:.27s}
+.wb:nth-child(5){animation-delay:.36s}.wb:nth-child(6){animation-delay:.45s}
+.wb:nth-child(7){animation-delay:.36s}.wb:nth-child(8){animation-delay:.27s}
+.wb:nth-child(9){animation-delay:.18s}.wb:nth-child(10){animation-delay:.09s}
+@keyframes wa { 0%,100%{height:4px} 50%{height:24px} }
+
+.rec-timer {
+  display:none; align-items:center; gap:6px;
+  font-size:12px; font-weight:600; color:var(--red);
+  font-variant-numeric:tabular-nums;
+}
+.rec-timer.on { display:flex; }
+.rec-dot { width:7px; height:7px; border-radius:50%; background:var(--red); animation:blink 1s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.15} }
+
+.mic-status { font-size:13px; color:var(--muted); font-weight:500; text-align:center; }
+.mic-status.rec  { color:var(--red); }
+.mic-status.busy { color:var(--amber); }
+.mic-status.done { color:var(--green); }
+
+/* Text input */
+.slabel {
+  font-size:11px; font-weight:600; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.07em;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.interim {
+  display:none; padding:7px 11px;
+  background:rgba(129,140,248,.06);
+  border-left:2px solid var(--pri); border-radius:var(--rsm);
+  font-size:13px; color:var(--muted); font-style:italic; line-height:1.6;
+}
+.interim.on { display:block; }
+textarea.ta {
+  width:100%; min-height:88px; padding:10px 13px;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--rsm); color:var(--text); font-family:inherit;
+  font-size:15px; line-height:1.6; resize:vertical; outline:none;
+  transition:border-color .2s; user-select:text;
+}
+textarea.ta::placeholder { color:var(--muted2); }
+textarea.ta:focus { border-color:var(--bora); }
+
+/* Buttons */
+.acts { display:flex; gap:8px; }
+.btn {
+  padding:11px 18px; border-radius:var(--rsm); border:none;
+  font-size:14px; font-weight:700; cursor:pointer;
+  transition:all .2s; display:flex; align-items:center; gap:7px;
+  touch-action:manipulation; outline:none;
+}
+.btn-pri {
+  background:linear-gradient(135deg,var(--pri),#6366f1);
+  color:#fff; flex:1; justify-content:center;
+  box-shadow:0 4px 14px rgba(129,140,248,.3);
+}
+.btn-pri:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 22px rgba(129,140,248,.45); }
+.btn-pri:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+.btn-ghost {
+  background:var(--card); color:var(--muted);
+  border:1px solid var(--border);
+}
+.btn-ghost:hover { background:var(--card2); color:var(--text); }
+
+/* Output panel tabs */
+.ptabs {
+  display:flex; border-bottom:1px solid var(--border);
+  padding:0 14px; flex-shrink:0; align-items:center;
+}
+.ptab {
+  padding:12px 16px; border-bottom:2px solid transparent;
+  font-size:13px; font-weight:600; color:var(--muted);
+  cursor:pointer; transition:all .2s; touch-action:manipulation;
+}
+.ptab:hover { color:var(--text); }
+.ptab.on { color:var(--pri); border-bottom-color:var(--pri); }
+.ptab-sp { flex:1; }
+.p-acts { display:flex; gap:6px; align-items:center; }
+.ico-btn {
+  width:30px; height:30px; border-radius:7px;
+  border:1px solid var(--border); background:var(--card);
+  color:var(--muted); cursor:pointer; font-size:13px;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .2s; touch-action:manipulation; outline:none;
+}
+.ico-btn:hover { background:var(--card2); color:var(--text); }
+
+/* Preview / Code */
+.ppane,.cpane { flex:1; overflow:hidden; display:none; flex-direction:column; position:relative; }
+.ppane.on,.cpane.on { display:flex; }
+
+.ph { /* placeholder */
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:10px;
+  color:var(--muted2); text-align:center; padding:24px;
+}
+.ph .big { font-size:54px; opacity:.22; }
+.ph p { font-size:13px; max-width:230px; line-height:1.7; }
+
+#dw { /* diagram wrap */
+  flex:1; overflow:auto; display:none;
+  align-items:flex-start; justify-content:center; padding:18px;
+}
+#dw.on { display:flex; }
+#dw svg { max-width:100%; height:auto; border-radius:8px; filter:drop-shadow(0 4px 20px rgba(0,0,0,.5)); }
+
+.load-ov {
+  position:absolute; inset:0; background:rgba(7,7,26,.88);
+  backdrop-filter:blur(4px);
+  display:none; flex-direction:column;
+  align-items:center; justify-content:center; gap:12px; z-index:10;
+}
+.load-ov.on { display:flex; }
+.spinner {
+  width:42px; height:42px;
+  border:3px solid var(--border); border-top-color:var(--pri);
+  border-radius:50%; animation:spin .8s linear infinite;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+.load-txt { font-size:13px; color:var(--muted); font-weight:500; }
+
+/* Upload progress */
+.ubar { position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--border); display:none; }
+.ubar.on { display:block; }
+.ufill { height:100%; background:linear-gradient(90deg,var(--pri),var(--cyan)); border-radius:2px; animation:upulse 1.5s ease-in-out infinite; }
+@keyframes upulse { 0%,100%{width:20%} 50%{width:85%} }
+
+textarea.ce {
+  flex:1; padding:16px 18px;
+  background:transparent; border:none; color:var(--cyan);
+  font-family:'JetBrains Mono','Fira Code',monospace;
+  font-size:13px; line-height:1.75; resize:none; outline:none; overflow-y:auto;
+  user-select:text;
+}
+textarea.ce::placeholder { color:var(--muted2); }
+
+/* Toast */
+.toast {
+  position:fixed; bottom:20px; right:16px; left:16px; max-width:340px; margin:0 auto;
+  padding:11px 16px; border-radius:var(--rsm); font-size:13px; font-weight:500;
+  display:flex; align-items:center; gap:9px; z-index:999;
+  transform:translateY(80px); opacity:0; box-shadow:0 4px 24px rgba(0,0,0,.4);
+  transition:all .3s cubic-bezier(.34,1.56,.64,1);
+}
+.toast.show { transform:translateY(0); opacity:1; }
+.toast.ok  { background:rgba(52,211,153,.12); border:1px solid rgba(52,211,153,.3);  color:var(--green); }
+.toast.err { background:rgba(248,113,113,.12); border:1px solid rgba(248,113,113,.3); color:var(--red); }
+.toast.inf { background:var(--priD);            border:1px solid rgba(129,140,248,.3); color:var(--pri); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,.09); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,.18); }
+</style>
+</head>
+<body>
+
+<!-- ── API Key Setup (shown when no key & no local backend) ── -->
+<div id="setup" class="hidden">
+  <div class="setup-card">
+    <div class="setup-logo">
+      <div class="ico">🎤</div>
+      <h1>VoiceChart</h1>
+    </div>
+    <p class="setup-desc">
+      首次使用请填入你的 <strong style="color:var(--pri)">DeepSeek API Key</strong>，
+      密钥只存储在你的设备本地，不上传任何服务器。
+    </p>
+    <div class="setup-field">
+      <label>DeepSeek API Key</label>
+      <input class="setup-input" id="keyInput" type="password"
+        placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+    </div>
+    <div class="setup-field">
+      <label>API 地址（可选，默认 DeepSeek 官方）</label>
+      <input class="setup-input" id="endpointInput" type="url"
+        placeholder="https://api.deepseek.com/v1">
+    </div>
+    <button class="setup-btn" onclick="saveSetup()">开始使用 →</button>
+    <p class="setup-hint">
+      没有 Key？前往
+      <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">platform.deepseek.com</a>
+      免费申请。Key 可随时在设置中修改。
+    </p>
+  </div>
+</div>
+
+<!-- ── Main App ── -->
+<div class="app" id="app">
+  <header>
+    <div class="logo">
+      <div class="logo-ico">🎤</div>
+      <div class="logo-name">VoiceChart</div>
+    </div>
+    <div class="hdr-badge" id="badge">
+      <span class="dot"></span>
+      <span id="badgeTxt">连接中…</span>
+    </div>
+    <div class="hdr-right">
+      <div class="lang-toggle">
+        <button class="lang-btn on" onclick="setLang('zh-CN')">中</button>
+        <button class="lang-btn"    onclick="setLang('en-US')">EN</button>
+      </div>
+      <button class="hdr-btn" onclick="openSettings()" title="设置">⚙</button>
+    </div>
+  </header>
+
+  <div class="style-bar" id="styleBar"></div>
+
+  <div class="workspace">
+    <!-- Input -->
+    <div class="in-panel">
+      <div class="mic-area">
+        <div class="ring-wrap">
+          <div class="ring" id="r1"></div><div class="ring" id="r2"></div><div class="ring" id="r3"></div>
+          <button class="mic-btn" id="micBtn" onclick="toggleMic()">🎤</button>
+        </div>
+        <div class="waveform" id="wv">
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div>
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div>
+          <div class="wb"></div><div class="wb"></div>
+        </div>
+        <div class="rec-timer" id="rt"><div class="rec-dot"></div><span id="rtxt">00:00</span></div>
+        <div class="mic-status" id="mstat">点击麦克风开始说话</div>
+        <div class="ubar" id="ubar"><div class="ufill"></div></div>
+      </div>
+
+      <div>
+        <div class="slabel" style="margin-bottom:7px">
+          <span>描述内容</span>
+          <span id="cc" style="color:var(--muted2);font-size:11px"></span>
+        </div>
+        <div class="interim" id="interim"></div>
+        <textarea class="ta" id="stxt"
+          placeholder="语音识别结果显示在这里，也可以直接输入文字描述…"
+          oninput="onTxt()"></textarea>
+      </div>
+
+      <div class="acts">
+        <button class="btn btn-pri" id="genBtn" onclick="generate()" disabled>
+          <span id="gi">✦</span><span id="gl">生成图表</span>
+        </button>
+        <button class="btn btn-ghost" onclick="clearAll()">⊘</button>
+      </div>
+    </div>
+
+    <!-- Output -->
+    <div class="out-panel">
+      <div class="ptabs">
+        <div class="ptab on" id="tp" onclick="swTab('p')">预览</div>
+        <div class="ptab"    id="tc" onclick="swTab('c')">代码</div>
+        <div class="ptab-sp"></div>
+        <div class="p-acts">
+          <button class="ico-btn" onclick="zoomIn()"    title="放大">＋</button>
+          <button class="ico-btn" onclick="zoomOut()"   title="缩小">－</button>
+          <button class="ico-btn" onclick="zoomFit()"   title="适应">⊡</button>
+          <button class="ico-btn" onclick="cpCode()"    title="复制">⎘</button>
+          <button class="ico-btn" onclick="dlSVG()"     title="SVG">↓</button>
+          <button class="ico-btn" onclick="dlPNG()"     title="PNG">🖼</button>
+        </div>
+      </div>
+      <div class="ppane on" id="pp">
+        <div class="ph" id="ph">
+          <div class="big">📊</div>
+          <p>对着麦克风描述你的想法<br>AI 自动生成流程图</p>
+        </div>
+        <div id="dw"></div>
+        <div class="load-ov" id="lo">
+          <div class="spinner"></div>
+          <div class="load-txt" id="ltxt">生成中…</div>
+        </div>
+      </div>
+      <div class="cpane" id="cp">
+        <textarea class="ce" id="ce" placeholder="Mermaid 代码…" oninput="onCE()" spellcheck="false"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+mermaid.initialize({
+  startOnLoad: false, theme: 'dark',
+  themeVariables: {
+    background:'#07071a', primaryColor:'#3730a3', primaryTextColor:'#f1f5f9',
+    primaryBorderColor:'#818cf8', lineColor:'#818cf8', secondaryColor:'#1e3a5f',
+    tertiaryColor:'#0f2040', edgeLabelBackground:'#0d0d2b', nodeTextColor:'#f1f5f9',
+    fontFamily:'Inter,system-ui,sans-serif',
+  },
+  flowchart:{curve:'basis',padding:20}, sequence:{actorMargin:60,mirrorActors:false},
+});
+window.__mmd = mermaid;
+
+// ── Config ────────────────────────────────────────────────────
+const STYLES = [
+  {id:'flowchart',n:'流程图',i:'⬡'},  {id:'sequence',n:'时序图',i:'↔'},
+  {id:'mindmap',n:'思维导图',i:'✦'},  {id:'class',n:'类图',i:'◫'},
+  {id:'state',n:'状态图',i:'◈'},     {id:'er',n:'ER图',i:'⊞'},
+  {id:'gantt',n:'甘特图',i:'▦'},     {id:'pie',n:'饼图',i:'◔'},
+];
+const STYLE_HINTS = {
+  flowchart:'标准流程图，flowchart TD语法，展示步骤与决策',
+  sequence:'时序图，sequenceDiagram语法，展示交互',
+  mindmap:'思维导图，mindmap语法，展示知识结构',
+  class:'UML类图，classDiagram语法，面向对象设计',
+  state:'状态机图，stateDiagram-v2语法，展示状态转换',
+  er:'实体关系图，erDiagram语法，展示数据库结构',
+  gantt:'甘特图，gantt语法，展示项目计划',
+  pie:'饼图，pie语法，展示数据占比',
+};
+const SYSPROMPT = `你是专业流程图设计师，精通Mermaid语法。根据描述生成准确美观的Mermaid图表代码。
+规则：1.只输出纯Mermaid代码，不要\`\`\`标记 2.代码语法正确可直接渲染 3.节点ID用英文，显示文字可中文 4.flowchart默认TD布局`;
+
+// ── State ─────────────────────────────────────────────────────
+const S = {
+  style:'flowchart', lang:'zh-CN',
+  mode:null,        // 'speech'|'media'|'none'
+  listening:false,
+  recognition:null, mediaRecorder:null, audioChunks:[],
+  timerID:null, timerSecs:0,
+  finalText:'', renderN:0,
+  backend:false,    // true if local Python backend available
+  apiKey:'', endpoint:'https://api.deepseek.com/v1',
+};
+const ZOOM = {s:1};
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const HAS_SPEECH = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+const HAS_MEDIA  = !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+
+// ── Init ──────────────────────────────────────────────────────
+async function init() {
+  buildStyles();
+
+  // Load saved config
+  S.apiKey  = localStorage.getItem('vc_key') || '';
+  S.endpoint = localStorage.getItem('vc_ep') || 'https://api.deepseek.com/v1';
+
+  // Check if local backend is reachable
+  try {
+    const r = await fetch('/api/capabilities', { signal: AbortSignal.timeout(1500) });
+    if (r.ok) {
+      const d = await r.json();
+      S.backend = true;
+      setBadge('local', '本地服务');
+    }
+  } catch { /* no backend, use direct API */ }
+
+  if (!S.backend) {
+    // No backend — need API key
+    if (!S.apiKey) {
+      document.getElementById('setup').classList.remove('hidden');
+      return;
+    }
+    setBadge('ok', '直连 DeepSeek');
+  }
+
+  setupVoice();
+}
+
+function buildStyles() {
+  document.getElementById('styleBar').innerHTML = STYLES.map(s =>
+    `<button class="spill${s.id===S.style?' on':''}" onclick="selStyle('${s.id}')">${s.i} ${s.n}</button>`
+  ).join('');
+}
+
+// ── Setup ─────────────────────────────────────────────────────
+window.saveSetup = () => {
+  const k = document.getElementById('keyInput').value.trim();
+  const e = document.getElementById('endpointInput').value.trim();
+  if (!k) { alert('请输入 API Key'); return; }
+  S.apiKey = k;
+  S.endpoint = e || 'https://api.deepseek.com/v1';
+  localStorage.setItem('vc_key', S.apiKey);
+  localStorage.setItem('vc_ep', S.endpoint);
+  document.getElementById('setup').classList.add('hidden');
+  setBadge('ok', '直连 DeepSeek');
+  setupVoice();
+};
+
+window.openSettings = () => {
+  const k = prompt('修改 DeepSeek API Key（留空取消）：', S.apiKey);
+  if (k === null) return;
+  if (k.trim()) {
+    S.apiKey = k.trim();
+    localStorage.setItem('vc_key', S.apiKey);
+    toast('API Key 已更新', 'ok');
+  }
+};
+
+// ── Badge ─────────────────────────────────────────────────────
+function setBadge(cls, txt) {
+  const b = document.getElementById('badge');
+  b.className = `hdr-badge ${cls}`;
+  document.getElementById('badgeTxt').textContent = txt;
+}
+
+// ── Voice Setup ───────────────────────────────────────────────
+function setupVoice() {
+  if (HAS_SPEECH) {
+    S.mode = 'speech';
+  } else if (HAS_MEDIA && S.backend) {
+    S.mode = 'media';
+  } else if (HAS_MEDIA) {
+    S.mode = 'media-no-backend';
+  } else {
+    S.mode = 'none';
+    setMstat('仅支持文字输入（该浏览器无语音）', '');
+    document.getElementById('micBtn').style.opacity = '.3';
+  }
+}
+
+// ── Style Select ──────────────────────────────────────────────
+window.selStyle = id => {
+  S.style = id;
+  document.querySelectorAll('.spill').forEach(b => b.classList.toggle('on', b.onclick?.toString().includes(`'${id}'`)));
+};
+
+// ── Lang ──────────────────────────────────────────────────────
+window.setLang = lang => {
+  S.lang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b =>
+    b.classList.toggle('on', b.getAttribute('onclick')?.includes(lang))
+  );
+  if (S.recognition) S.recognition.lang = lang;
+};
+
+// ── Mic Toggle ────────────────────────────────────────────────
+window.toggleMic = async () => {
+  if (navigator.vibrate) navigator.vibrate(30);
+  if (S.mode === 'none') { toast('该浏览器不支持语音识别，请直接输入文字', 'inf'); return; }
+  if (S.mode === 'media-no-backend') {
+    toast('离线模式下语音识别需后端服务，请直接输入文字', 'inf'); return;
+  }
+  if (S.listening) { stopRec(); return; }
+  if (S.mode === 'speech') startSpeech();
+  else await startMedia();
+};
+
+// ── Web Speech API ────────────────────────────────────────────
+function startSpeech() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
+  const rec = new SR();
+  rec.lang = S.lang;
+  // iOS Safari doesn't support continuous + interimResults reliably
+  rec.continuous     = !isIOS;
+  rec.interimResults = !isIOS;
+  rec.maxAlternatives = 1;
+  S.recognition = rec;
+
+  rec.onstart = () => { S.listening = true; setMicUI(true); };
+
+  rec.onresult = e => {
+    let inter = '', fin = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      e.results[i].isFinal ? (fin += t) : (inter += t);
+    }
+    if (fin) {
+      const sep = S.finalText ? '，' : '';
+      S.finalText += sep + fin.trim();
+      document.getElementById('stxt').value = S.finalText;
+      onTxt();
+    }
+    const el = document.getElementById('interim');
+    if (inter) { el.textContent = inter; el.classList.add('on'); }
+    else        { el.textContent = ''; el.classList.remove('on'); }
+  };
+
+  rec.onerror = e => {
+    if (e.error === 'not-allowed') toast('请允许麦克风权限后重试', 'err');
+    else if (e.error !== 'aborted' && e.error !== 'no-speech') toast(`语音错误: ${e.error}`, 'err');
+    stopRec();
+  };
+
+  // Auto-restart to maintain continuous recording on iOS
+  rec.onend = () => {
+    if (S.listening) {
+      setTimeout(() => {
+        if (S.listening) { try { rec.start(); } catch { stopRec(); } }
+      }, 100);
+    }
+  };
+
+  try { rec.start(); }
+  catch(e) { toast('无法启动语音识别：' + e.message, 'err'); }
+}
+
+function stopSpeech() {
+  S.listening = false;
+  S.recognition?.stop();
+  S.recognition = null;
+  document.getElementById('interim').classList.remove('on');
+  setMicUI(false);
+}
+
+// ── MediaRecorder (Firefox / fallback) ───────────────────────
+async function startMedia() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mime = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4']
+      .find(m => MediaRecorder.isTypeSupported(m)) ?? '';
+    S.mediaRecorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
+    S.audioChunks = [];
+    S.mediaRecorder.ondataavailable = e => { if (e.data.size > 0) S.audioChunks.push(e.data); };
+    S.mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      await doTranscribe();
+    };
+    S.mediaRecorder.start(100);
+    S.listening = true;
+    setMicUI(true, 'media');
+    startTimer();
+  } catch(e) {
+    toast(e.name === 'NotAllowedError' ? '请允许麦克风权限' : '无法访问麦克风：' + e.message, 'err');
+  }
+}
+
+function stopMedia() {
+  S.listening = false;
+  stopTimer();
+  if (S.mediaRecorder?.state !== 'inactive') S.mediaRecorder?.stop();
+  setMicUI(false);
+}
+
+async function doTranscribe() {
+  if (!S.audioChunks.length) return;
+  const mime = S.mediaRecorder?.mimeType || 'audio/webm';
+  const blob = new Blob(S.audioChunks, { type: mime });
+  setMstat('识别中…', 'busy');
+  document.getElementById('ubar').classList.add('on');
+  try {
+    const fd = new FormData();
+    fd.append('audio', blob, 'rec.' + (mime.includes('mp4')?'mp4':mime.includes('ogg')?'ogg':'webm'));
+    fd.append('lang', S.lang);
+    const r = await fetch('/api/transcribe', { method:'POST', body:fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || '识别失败');
+    if (d.text) {
+      const ta = document.getElementById('stxt');
+      ta.value = ta.value.trim() ? ta.value + '，' + d.text : d.text;
+      S.finalText = ta.value;
+      onTxt();
+      setMstat('识别完成', 'done');
+    } else {
+      setMstat('未识别到内容', '');
+    }
+  } catch(e) {
+    toast('识别失败：' + e.message, 'err');
+    setMstat('', '');
+  } finally {
+    document.getElementById('ubar').classList.remove('on');
+  }
+}
+
+function stopRec() { S.mode === 'speech' ? stopSpeech() : stopMedia(); }
+
+// ── Timer ─────────────────────────────────────────────────────
+function startTimer() {
+  S.timerSecs = 0;
+  document.getElementById('rt').classList.add('on');
+  S.timerID = setInterval(() => {
+    S.timerSecs++;
+    const m = String(Math.floor(S.timerSecs/60)).padStart(2,'0');
+    const s = String(S.timerSecs%60).padStart(2,'0');
+    document.getElementById('rtxt').textContent = `${m}:${s}`;
+    if (S.timerSecs >= 300) stopRec(); // auto-stop at 5 min
+  }, 1000);
+}
+function stopTimer() { clearInterval(S.timerID); document.getElementById('rt').classList.remove('on'); }
+
+// ── Mic UI ────────────────────────────────────────────────────
+function setMicUI(on, mode) {
+  const btn = document.getElementById('micBtn');
+  const wv = document.getElementById('wv');
+  const rings = ['r1','r2','r3'].map(id => document.getElementById(id));
+  if (on) {
+    btn.classList.add('rec'); btn.textContent = '⏹';
+    wv.classList.add('on');
+    rings.forEach(r => r.classList.add('go'));
+    setMstat(mode === 'media' ? '录音中 · 点击停止' : '聆听中 · 点击停止', 'rec');
+  } else {
+    btn.classList.remove('rec'); btn.textContent = '🎤';
+    wv.classList.remove('on');
+    rings.forEach(r => r.classList.remove('go'));
+    const has = document.getElementById('stxt').value.trim();
+    if (!has) setMstat('点击麦克风开始说话', '');
+  }
+}
+function setMstat(txt, cls) {
+  const el = document.getElementById('mstat');
+  el.textContent = txt; el.className = `mic-status ${cls}`;
+}
+
+// ── Text ──────────────────────────────────────────────────────
+window.onTxt = () => {
+  const v = document.getElementById('stxt').value.trim();
+  document.getElementById('genBtn').disabled = !v;
+  document.getElementById('cc').textContent = v.length ? `${v.length} 字` : '';
+};
+
+// ── Generate ──────────────────────────────────────────────────
+window.generate = async () => {
+  const text = document.getElementById('stxt').value.trim();
+  if (!text) return;
+  setGen(true);
+
+  try {
+    let code;
+    if (S.backend) {
+      const r = await fetch('/api/generate', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ text, style: S.style }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '生成失败');
+      code = d.code;
+    } else {
+      code = await callDeepSeek(text, S.style);
+    }
+    document.getElementById('ce').value = code;
+    await renderDiagram(code);
+    toast('图表已生成！', 'ok');
+  } catch(e) {
+    let msg = e.message;
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+      msg = 'API 请求失败（可能是 CORS 限制），建议使用本地服务模式：python app.py';
+    }
+    toast(msg, 'err');
+  } finally {
+    setGen(false);
+  }
+};
+
+// ── Direct DeepSeek call (standalone mode) ────────────────────
+async function callDeepSeek(text, style) {
+  if (!S.apiKey) throw new Error('未设置 API Key，请点击 ⚙ 进行配置');
+  const hint = STYLE_HINTS[style] || '';
+  const userMsg = `用户描述：${text}\n请生成【${style}】类型的Mermaid图表。提示：${hint}\n直接输出Mermaid代码，不要任何解释或代码块标记。`;
+  const resp = await fetch(`${S.endpoint}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${S.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [
+        { role:'system', content: SYSPROMPT },
+        { role:'user',   content: userMsg },
+      ],
+      temperature: 0.2,
+      max_tokens: 2048,
+    }),
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || `API 错误 ${resp.status}`);
+  }
+  const data = await resp.json();
+  let code = data.choices[0].message.content.trim();
+  code = code.replace(/^```(?:mermaid)?\s*\n?/,'').replace(/\n?```\s*$/,'').trim();
+  return code;
+}
+
+// ── Mermaid Render ────────────────────────────────────────────
+async function renderDiagram(code) {
+  if (!code?.trim()) return;
+  const id = 'md' + (++S.renderN);
+  const dw = document.getElementById('dw');
+  const ph = document.getElementById('ph');
+  document.getElementById('lo').classList.add('on');
+  try {
+    const { svg } = await window.__mmd.render(id, code);
+    dw.innerHTML = svg;
+    dw.classList.add('on');
+    ph.style.display = 'none';
+    const s = dw.querySelector('svg');
+    if (s) { s.style.maxWidth='100%'; s.removeAttribute('height'); }
+    ZOOM.s = 1;
+  } catch(e) {
+    toast('Mermaid 渲染失败，请检查代码格式', 'err');
+  } finally {
+    document.getElementById('lo').classList.remove('on');
+  }
+}
+
+// ── Code editor live preview ──────────────────────────────────
+let ceT;
+window.onCE = () => {
+  clearTimeout(ceT);
+  ceT = setTimeout(() => {
+    const c = document.getElementById('ce').value.trim();
+    if (c) renderDiagram(c);
+  }, 700);
+};
+
+// ── Tabs ──────────────────────────────────────────────────────
+window.swTab = t => {
+  document.getElementById('tp').classList.toggle('on', t==='p');
+  document.getElementById('tc').classList.toggle('on', t==='c');
+  document.getElementById('pp').classList.toggle('on', t==='p');
+  document.getElementById('cp').classList.toggle('on', t==='c');
+};
+
+// ── Zoom ──────────────────────────────────────────────────────
+function zoomTo(s) {
+  ZOOM.s = Math.max(.15, Math.min(8, s));
+  const svg = document.querySelector('#dw svg');
+  if (!svg) return;
+  svg.style.transform = `scale(${ZOOM.s})`;
+  svg.style.transformOrigin = 'top center';
+  svg.style.maxWidth = 'none'; svg.style.width = 'auto';
+}
+window.zoomIn  = () => zoomTo(ZOOM.s * 1.25);
+window.zoomOut = () => zoomTo(ZOOM.s / 1.25);
+window.zoomFit = () => {
+  ZOOM.s = 1;
+  const svg = document.querySelector('#dw svg');
+  if (svg) { svg.style.transform=''; svg.style.maxWidth='100%'; svg.style.width='100%'; svg.style.height='auto'; }
+};
+
+// Wheel zoom
+document.getElementById('dw').addEventListener('wheel', e => {
+  if (!document.querySelector('#dw svg')) return;
+  e.preventDefault();
+  zoomTo(ZOOM.s * (e.deltaY < 0 ? 1.12 : 0.88));
+}, { passive: false });
+
+// Pinch zoom
+let lp = 0;
+const dw = document.getElementById('dw');
+dw.addEventListener('touchstart', e => {
+  if (e.touches.length===2)
+    lp = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+}, {passive:true});
+dw.addEventListener('touchmove', e => {
+  if (e.touches.length!==2) return;
+  e.preventDefault();
+  const d = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+  if (lp > 0) zoomTo(ZOOM.s * (d / lp));
+  lp = d;
+}, {passive:false});
+dw.addEventListener('touchend', () => { lp = 0; }, {passive:true});
+
+// ── Export ────────────────────────────────────────────────────
+window.cpCode = async () => {
+  const c = document.getElementById('ce').value;
+  if (!c) { toast('没有代码', 'inf'); return; }
+  try { await navigator.clipboard.writeText(c); toast('代码已复制', 'ok'); }
+  catch { toast('复制失败', 'err'); }
+};
+
+window.dlSVG = () => {
+  const svg = document.querySelector('#dw svg');
+  if (!svg) { toast('请先生成图表', 'inf'); return; }
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([svg.outerHTML], {type:'image/svg+xml'})),
+    download: `voicechart-${Date.now()}.svg`,
+  });
+  a.click(); toast('SVG 下载中', 'ok');
+};
+
+window.dlPNG = () => {
+  const svg = document.querySelector('#dw svg');
+  if (!svg) { toast('请先生成图表', 'inf'); return; }
+  const dpr = Math.max(window.devicePixelRatio||2, 2);
+  const w = svg.getBoundingClientRect().width || svg.clientWidth || 800;
+  const h = svg.getBoundingClientRect().height || svg.clientHeight || 600;
+  const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], {type:'image/svg+xml;charset=utf-8'}));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(w*dpr); canvas.height = Math.round(h*dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#07071a'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.scale(dpr,dpr);
+  const img = new Image();
+  img.onload = () => {
+    ctx.drawImage(img,0,0,w,h); URL.revokeObjectURL(url);
+    Object.assign(document.createElement('a'),{
+      href:canvas.toDataURL('image/png'), download:`voicechart-${Date.now()}.png`
+    }).click();
+    toast('PNG 下载中', 'ok');
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); toast('PNG 导出失败，请用 SVG', 'err'); };
+  img.src = url;
+};
+
+// ── Clear ─────────────────────────────────────────────────────
+window.clearAll = () => {
+  if (S.listening) stopRec();
+  document.getElementById('stxt').value = '';
+  document.getElementById('ce').value = '';
+  document.getElementById('interim').classList.remove('on');
+  const dw2 = document.getElementById('dw');
+  dw2.classList.remove('on'); dw2.innerHTML = '';
+  document.getElementById('ph').style.display = '';
+  document.getElementById('genBtn').disabled = true;
+  document.getElementById('cc').textContent = '';
+  S.finalText = '';
+  setMstat('点击麦克风开始说话', '');
+};
+
+// ── Loading ───────────────────────────────────────────────────
+function setGen(on) {
+  document.getElementById('genBtn').disabled = on;
+  const gi = document.getElementById('gi');
+  gi.textContent = on ? '⟳' : '✦';
+  gi.style.animation = on ? 'spin .8s linear infinite' : '';
+  document.getElementById('gl').textContent = on ? '生成中…' : '生成图表';
+  document.getElementById('lo').classList.toggle('on', on);
+  document.getElementById('ltxt').textContent = on
+    ? (S.backend ? 'DeepSeek 生成中…' : '直连 DeepSeek 生成中…')
+    : '生成中…';
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+let tt;
+window.toast = (msg, type='inf') => {
+  const el = document.getElementById('toast');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${{ok:'✓',err:'✕',inf:'ℹ'}[type]||'ℹ'}</span> ${msg}`;
+  el.classList.add('show');
+  clearTimeout(tt); tt = setTimeout(() => el.classList.remove('show'), 3500);
+};
+
+// ── Keyboard ──────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey||e.metaKey) && e.key==='Enter') {
+    e.preventDefault();
+    if (!document.getElementById('genBtn').disabled) generate();
+  }
+  if ((e.ctrlKey||e.metaKey) && e.key==='m') { e.preventDefault(); toggleMic(); }
+});
+
+// ── Boot ──────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

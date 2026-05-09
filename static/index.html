@@ -703,7 +703,12 @@ function startSpeech() {
     stopRec();
   };
 
-  rec.onend = () => { if (S.listening) { try { rec.start(); } catch { stopRec(); } } };
+  // iOS Safari ends the session after each utterance — restart to stay continuous
+  rec.onend = () => {
+    if (S.listening) {
+      setTimeout(() => { try { rec.start(); } catch { stopRec(); } }, 150);
+    }
+  };
 
   try { rec.start(); } catch(e) { toast('无法启动语音识别: ' + e.message, 'err'); }
 }

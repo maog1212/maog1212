@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: voicechart
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: WHISPER_MODEL
+        value: base
+      - key: PORT
+        value: 8000
+    healthCheckPath: /
+    autoDeploy: true
