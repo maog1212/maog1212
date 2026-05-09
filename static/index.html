@@ -2,667 +2,415 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VoiceChart — 语音流程图生成器</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#07071a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/static/manifest.json">
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<meta name="description" content="对着麦克风描述流程，AI 自动生成专业图表 | Open-source voice-to-flowchart generator">
+<title>VoiceChart — 语音流程图</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 :root {
-  --bg: #07071a;
-  --bg2: #0d0d2b;
-  --card: rgba(255,255,255,0.04);
-  --card-hover: rgba(255,255,255,0.07);
-  --border: rgba(255,255,255,0.08);
-  --border-active: rgba(129,140,248,0.5);
-  --primary: #818cf8;
-  --primary-dim: rgba(129,140,248,0.15);
-  --cyan: #22d3ee;
-  --cyan-dim: rgba(34,211,238,0.12);
-  --green: #34d399;
-  --red: #f87171;
-  --amber: #fbbf24;
-  --text: #f1f5f9;
-  --muted: #94a3b8;
-  --muted2: #64748b;
-  --radius: 14px;
-  --radius-sm: 8px;
-  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --bg:      #07071a;
+  --bg2:     #0d0d2b;
+  --card:    rgba(255,255,255,0.04);
+  --card2:   rgba(255,255,255,0.07);
+  --border:  rgba(255,255,255,0.08);
+  --borderA: rgba(129,140,248,0.45);
+  --pri:     #818cf8;
+  --priD:    rgba(129,140,248,0.14);
+  --cyan:    #22d3ee;
+  --cyanD:   rgba(34,211,238,0.12);
+  --green:   #34d399;
+  --red:     #f87171;
+  --amber:   #fbbf24;
+  --text:    #f1f5f9;
+  --muted:   #94a3b8;
+  --muted2:  #64748b;
+  --r:       12px;
+  --rsm:     8px;
 }
 
+html { height: 100%; }
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg);
   color: var(--text);
-  min-height: 100vh;
-  overflow-x: hidden;
+  height: 100%;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
-
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse 60% 40% at 15% 20%, rgba(129,140,248,0.12) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 85% 70%, rgba(34,211,238,0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 30% at 50% 100%, rgba(129,140,248,0.06) 0%, transparent 50%);
+    radial-gradient(ellipse 55% 35% at 10% 15%, rgba(129,140,248,.13) 0%, transparent 60%),
+    radial-gradient(ellipse 45% 35% at 90% 75%, rgba(34,211,238,.08) 0%, transparent 60%);
   pointer-events: none;
   z-index: 0;
 }
 
-.app { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 100vh; }
+/* ── Layout ────────────────────────────────────────────────────── */
+.app {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
 
-/* ── Header ── */
+/* ── Header ────────────────────────────────────────────────────── */
 header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 20px 32px;
+  gap: 12px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border);
+  background: rgba(7,7,26,.85);
   backdrop-filter: blur(20px);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: rgba(7,7,26,0.8);
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.logo-icon {
-  width: 36px;
-  height: 36px;
-  background: linear-gradient(135deg, var(--primary), var(--cyan));
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
   flex-shrink: 0;
+  z-index: 100;
 }
-
-.logo-text {
-  font-size: 20px;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--primary), var(--cyan));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.logo { display: flex; align-items: center; gap: 9px; }
+.logo-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--pri), var(--cyan));
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.logo-name {
+  font-size: 17px; font-weight: 700;
+  background: linear-gradient(135deg, var(--pri), var(--cyan));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-
-.logo-sub {
-  font-size: 11px;
+.mode-badge {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-size: 11px; font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--card);
   color: var(--muted);
-  font-weight: 400;
-  margin-left: 2px;
-  -webkit-text-fill-color: var(--muted);
+  transition: all .3s;
 }
+.mode-badge.speech  { border-color: rgba(52,211,153,.4); color: var(--green); background: rgba(52,211,153,.08); }
+.mode-badge.media   { border-color: rgba(129,140,248,.4); color: var(--pri); background: var(--priD); }
+.mode-badge.none    { border-color: rgba(248,113,113,.3); color: var(--red); background: rgba(248,113,113,.08); }
+.mode-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
-/* Style Selector */
+.lang-toggle {
+  display: flex; background: var(--card);
+  border: 1px solid var(--border); border-radius: 100px; padding: 3px; gap: 2px;
+  margin-left: auto;
+}
+.lang-btn {
+  padding: 4px 11px; border-radius: 100px; border: none;
+  background: transparent; color: var(--muted);
+  font-size: 12px; font-weight: 600; cursor: pointer; transition: all .2s;
+}
+.lang-btn.active { background: var(--priD); color: var(--pri); }
+
+/* ── Style Bar ─────────────────────────────────────────────────── */
 .style-bar {
-  display: flex;
-  gap: 8px;
-  padding: 14px 32px;
+  display: flex; gap: 6px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--border);
-  overflow-x: auto;
-  scrollbar-width: none;
+  overflow-x: auto; scrollbar-width: none;
+  flex-shrink: 0;
 }
 .style-bar::-webkit-scrollbar { display: none; }
-
-.style-pill {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 16px;
-  border-radius: 100px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--muted);
-  cursor: pointer;
-  white-space: nowrap;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.2s;
-  user-select: none;
+.spill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 100px;
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--muted); cursor: pointer;
+  font-size: 12px; font-weight: 600;
+  white-space: nowrap; transition: all .2s;
+  touch-action: manipulation;
 }
+.spill:hover  { border-color: var(--borderA); background: var(--priD); color: var(--pri); }
+.spill.active { border-color: var(--pri); background: var(--priD); color: var(--pri);
+                box-shadow: 0 0 14px rgba(129,140,248,.2); }
 
-.style-pill:hover {
-  border-color: var(--border-active);
-  background: var(--primary-dim);
-  color: var(--primary);
-}
-
-.style-pill.active {
-  border-color: var(--primary);
-  background: var(--primary-dim);
-  color: var(--primary);
-  box-shadow: 0 0 16px rgba(129,140,248,0.2);
-}
-
-.style-pill .pill-icon {
-  font-style: normal;
-  font-size: 14px;
-  opacity: 0.8;
-}
-
-/* ── Main Workspace ── */
+/* ── Workspace: mobile = column, desktop = grid ─────────────────── */
 .workspace {
+  display: flex;
+  flex-direction: column;
   flex: 1;
-  display: grid;
-  grid-template-columns: 420px 1fr;
-  gap: 0;
+  min-height: 0;
   overflow: hidden;
-  height: calc(100vh - 120px);
+}
+@media (min-width: 860px) {
+  .workspace {
+    display: grid;
+    grid-template-columns: 390px 1fr;
+  }
 }
 
-/* ── Left Panel ── */
+/* ── Left / Input Panel ─────────────────────────────────────────── */
 .left-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 16px;
   overflow-y: auto;
-  padding: 24px;
-  gap: 16px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  max-height: 46dvh;
+}
+@media (min-width: 860px) {
+  .left-panel {
+    border-right: 1px solid var(--border);
+    border-top: none;
+    max-height: none;
+  }
 }
 
-/* Mic Section */
-.mic-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 28px 20px;
+/* ── Mic Area ──────────────────────────────────────────────────── */
+.mic-area {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 20px 16px 16px;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--r);
 }
-
-.mic-ring-wrapper {
-  position: relative;
-  width: 120px;
-  height: 120px;
+@media (min-width: 860px) {
+  .mic-area { padding: 24px 16px 18px; }
 }
-
-.mic-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 2px solid var(--primary);
-  opacity: 0;
-  transform: scale(1);
-  transition: opacity 0.3s;
+.mic-ring-wrap { position: relative; width: 108px; height: 108px; }
+.ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 2px solid var(--pri); opacity: 0; transform: scale(1);
 }
-
-.mic-ring.pulse {
-  animation: ringPulse 1.5s ease-out infinite;
+.ring.go { animation: ripple 1.6s ease-out infinite; }
+.ring:nth-child(2).go { animation-delay: .53s; }
+.ring:nth-child(3).go { animation-delay: 1.06s; }
+@keyframes ripple {
+  0%   { transform: scale(1); opacity: .7; }
+  100% { transform: scale(1.65); opacity: 0; }
 }
-
-@keyframes ringPulse {
-  0% { transform: scale(1); opacity: 0.7; }
-  100% { transform: scale(1.6); opacity: 0; }
-}
-
-.mic-ring:nth-child(2).pulse { animation-delay: 0.5s; }
-.mic-ring:nth-child(3).pulse { animation-delay: 1s; }
-
 .mic-btn {
-  position: absolute;
-  inset: 10px;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 36px;
-  transition: all 0.25s;
+  position: absolute; inset: 10px;
+  border-radius: 50%; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px;
   background: linear-gradient(135deg, #3730a3, #1e3a8a);
-  box-shadow: 0 0 30px rgba(129,140,248,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+  box-shadow: 0 0 28px rgba(129,140,248,.28), inset 0 1px 0 rgba(255,255,255,.1);
+  transition: all .25s;
+  touch-action: manipulation;
   outline: none;
 }
-
-.mic-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 40px rgba(129,140,248,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
-}
-
-.mic-btn.listening {
+.mic-btn:hover  { transform: scale(1.06); box-shadow: 0 0 40px rgba(129,140,248,.45), inset 0 1px 0 rgba(255,255,255,.15); }
+.mic-btn.rec {
   background: linear-gradient(135deg, #dc2626, #991b1b);
-  box-shadow: 0 0 30px rgba(239,68,68,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
-  animation: micPulse 1s ease-in-out infinite;
+  box-shadow: 0 0 28px rgba(239,68,68,.35), inset 0 1px 0 rgba(255,255,255,.1);
+  animation: micglow 1.2s ease-in-out infinite;
 }
-
-@keyframes micPulse {
-  0%, 100% { box-shadow: 0 0 30px rgba(239,68,68,0.4), inset 0 1px 0 rgba(255,255,255,0.1); }
-  50% { box-shadow: 0 0 50px rgba(239,68,68,0.7), inset 0 1px 0 rgba(255,255,255,0.15); }
+@keyframes micglow {
+  0%,100% { box-shadow: 0 0 28px rgba(239,68,68,.35), inset 0 1px 0 rgba(255,255,255,.1); }
+  50%      { box-shadow: 0 0 50px rgba(239,68,68,.65), inset 0 1px 0 rgba(255,255,255,.15); }
 }
-
-.mic-status {
-  font-size: 13px;
-  color: var(--muted);
-  font-weight: 500;
-  letter-spacing: 0.02em;
-}
-
-.mic-status.listening { color: #f87171; }
-.mic-status.processing { color: var(--amber); }
-.mic-status.done { color: var(--green); }
 
 /* Waveform */
-.waveform {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  height: 32px;
-  opacity: 0;
-  transition: opacity 0.3s;
+.waveform { display: flex; align-items: center; gap: 3px; height: 28px; opacity: 0; transition: opacity .3s; }
+.waveform.on { opacity: 1; }
+.wb { width: 3px; border-radius: 2px; background: var(--pri); height: 4px; }
+.waveform.on .wb { animation: wa .9s ease-in-out infinite; }
+.wb:nth-child(1){animation-delay:0s} .wb:nth-child(2){animation-delay:.09s}
+.wb:nth-child(3){animation-delay:.18s} .wb:nth-child(4){animation-delay:.27s}
+.wb:nth-child(5){animation-delay:.36s} .wb:nth-child(6){animation-delay:.45s}
+.wb:nth-child(7){animation-delay:.36s} .wb:nth-child(8){animation-delay:.27s}
+.wb:nth-child(9){animation-delay:.18s} .wb:nth-child(10){animation-delay:.09s}
+@keyframes wa { 0%,100%{height:4px} 50%{height:26px} }
+
+.mic-status { font-size: 13px; color: var(--muted); font-weight: 500; text-align: center; }
+.mic-status.rec  { color: var(--red); }
+.mic-status.busy { color: var(--amber); }
+.mic-status.done { color: var(--green); }
+
+/* Recording timer */
+.rec-timer {
+  display: none;
+  align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 600; color: var(--red);
+  font-variant-numeric: tabular-nums;
 }
+.rec-timer.on { display: flex; }
+.rec-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); animation: blink 1s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
 
-.waveform.active { opacity: 1; }
-
-.wave-bar {
-  width: 3px;
-  border-radius: 2px;
-  background: var(--primary);
-  height: 6px;
-  transition: height 0.1s;
-}
-
-.waveform.active .wave-bar {
-  animation: waveAnim 0.8s ease-in-out infinite;
-}
-
-.wave-bar:nth-child(1) { animation-delay: 0s; }
-.wave-bar:nth-child(2) { animation-delay: 0.08s; }
-.wave-bar:nth-child(3) { animation-delay: 0.16s; }
-.wave-bar:nth-child(4) { animation-delay: 0.24s; }
-.wave-bar:nth-child(5) { animation-delay: 0.32s; }
-.wave-bar:nth-child(6) { animation-delay: 0.4s; }
-.wave-bar:nth-child(7) { animation-delay: 0.32s; }
-.wave-bar:nth-child(8) { animation-delay: 0.24s; }
-.wave-bar:nth-child(9) { animation-delay: 0.16s; }
-.wave-bar:nth-child(10) { animation-delay: 0.08s; }
-
-@keyframes waveAnim {
-  0%, 100% { height: 4px; }
-  50% { height: 28px; }
-}
-
-/* Text Area */
-.text-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
+/* ── Text Section ───────────────────────────────────────────────── */
 .section-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  font-size: 11px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .07em;
+  display: flex; align-items: center; justify-content: space-between;
 }
-
-.text-area {
-  width: 100%;
-  min-height: 110px;
-  padding: 12px 14px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1.6;
-  resize: vertical;
-  outline: none;
-  transition: border-color 0.2s;
+.interim {
+  display: none; padding: 8px 11px;
+  background: rgba(129,140,248,.06);
+  border-left: 2px solid var(--pri);
+  border-radius: var(--rsm);
+  font-size: 13px; color: var(--muted); font-style: italic; line-height: 1.6;
 }
-
-.text-area::placeholder { color: var(--muted2); }
-.text-area:focus { border-color: var(--border-active); }
-
-.interim-text {
-  color: var(--muted);
-  font-style: italic;
-  font-size: 13px;
-  padding: 8px 12px;
-  background: rgba(129,140,248,0.06);
-  border-radius: 6px;
-  border-left: 2px solid var(--primary);
-  min-height: 36px;
-  display: none;
+.interim.on { display: block; }
+textarea.input-ta {
+  width: 100%; min-height: 96px;
+  padding: 11px 13px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--rsm); color: var(--text);
+  font-family: inherit; font-size: 15px; line-height: 1.6;
+  resize: vertical; outline: none; transition: border-color .2s;
 }
+textarea.input-ta::placeholder { color: var(--muted2); }
+textarea.input-ta:focus { border-color: var(--borderA); }
 
-.interim-text.visible { display: block; }
-
-/* Action Buttons */
-.actions {
-  display: flex;
-  gap: 10px;
-}
-
+/* ── Buttons ────────────────────────────────────────────────────── */
+.actions { display: flex; gap: 10px; }
 .btn {
-  padding: 10px 20px;
-  border-radius: var(--radius-sm);
-  border: none;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  outline: none;
-  white-space: nowrap;
+  padding: 11px 20px; border-radius: var(--rsm); border: none;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: all .2s; display: flex; align-items: center;
+  gap: 7px; outline: none; touch-action: manipulation;
 }
-
-.btn-primary {
-  background: linear-gradient(135deg, var(--primary), #6366f1);
-  color: white;
-  flex: 1;
-  justify-content: center;
-  box-shadow: 0 4px 16px rgba(129,140,248,0.3);
+.btn-pri {
+  background: linear-gradient(135deg, var(--pri), #6366f1);
+  color: #fff; flex: 1; justify-content: center;
+  box-shadow: 0 4px 14px rgba(129,140,248,.3);
 }
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 24px rgba(129,140,248,0.45);
-}
-
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
+.btn-pri:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(129,140,248,.45); }
+.btn-pri:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 .btn-ghost {
-  background: var(--card);
-  color: var(--muted);
+  background: var(--card); color: var(--muted);
   border: 1px solid var(--border);
 }
-
-.btn-ghost:hover {
-  background: var(--card-hover);
-  color: var(--text);
-  border-color: rgba(255,255,255,0.15);
-}
-
-/* Lang toggle */
-.lang-toggle {
-  display: flex;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 100px;
-  padding: 3px;
-  gap: 2px;
-}
-
-.lang-btn {
-  padding: 4px 12px;
-  border-radius: 100px;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.lang-btn.active {
-  background: var(--primary-dim);
-  color: var(--primary);
-}
-
-/* ── Right Panel ── */
-.right-panel {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* Code / Preview Tabs */
-.panel-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--border);
-  padding: 0 24px;
-  gap: 0;
-  align-items: center;
-}
-
-.tab {
-  padding: 14px 20px;
-  border-bottom: 2px solid transparent;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted);
-  cursor: pointer;
-  transition: all 0.2s;
-  user-select: none;
-}
-
-.tab:hover { color: var(--text); }
-
-.tab.active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
-}
-
-.tab-spacer { flex: 1; }
-
-.panel-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.icon-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  transition: all 0.2s;
-  outline: none;
-}
-
-.icon-btn:hover {
-  background: var(--card-hover);
-  color: var(--text);
-  border-color: rgba(255,255,255,0.15);
-}
-
-/* Code Editor */
-.code-pane {
-  flex: 1;
-  overflow: hidden;
-  display: none;
-  flex-direction: column;
-}
-
-.code-pane.active { display: flex; }
-
-.code-editor {
-  flex: 1;
-  padding: 20px 24px;
-  background: transparent;
-  border: none;
-  color: var(--cyan);
-  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-  font-size: 13px;
-  line-height: 1.7;
-  resize: none;
-  outline: none;
-  overflow-y: auto;
-}
-
-.code-editor::placeholder { color: var(--muted2); }
-
-/* Preview */
-.preview-pane {
-  flex: 1;
-  overflow: hidden;
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  position: relative;
-}
-
-.preview-pane.active { display: flex; }
-
-.preview-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  color: var(--muted2);
-  text-align: center;
-}
-
-.preview-placeholder .big-icon {
-  font-size: 64px;
-  opacity: 0.3;
-}
-
-.preview-placeholder p {
-  font-size: 14px;
-  max-width: 260px;
-  line-height: 1.6;
-}
-
-#diagram-container {
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 16px;
-}
-
-#diagram-container svg {
-  max-width: 100%;
-  height: auto;
-  filter: drop-shadow(0 4px 24px rgba(0,0,0,0.5));
-  border-radius: 8px;
-}
-
-/* Loading overlay */
-.loading-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(7,7,26,0.85);
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  backdrop-filter: blur(4px);
-  z-index: 10;
-}
-
-.loading-overlay.visible { display: flex; }
-
-.spinner {
-  width: 48px;
-  height: 48px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.loading-text {
-  font-size: 14px;
-  color: var(--muted);
-  font-weight: 500;
-}
-
-/* Error / Success toast */
-.toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  padding: 12px 20px;
-  border-radius: var(--radius-sm);
-  font-size: 14px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  z-index: 1000;
-  transform: translateY(80px);
-  opacity: 0;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  max-width: 360px;
-  box-shadow: var(--shadow);
-}
-
-.toast.show {
-  transform: translateY(0);
-  opacity: 1;
-}
-
-.toast.success {
-  background: rgba(52,211,153,0.15);
-  border: 1px solid rgba(52,211,153,0.3);
-  color: var(--green);
-}
-
-.toast.error {
-  background: rgba(248,113,113,0.15);
-  border: 1px solid rgba(248,113,113,0.3);
-  color: var(--red);
-}
-
-.toast.info {
-  background: rgba(129,140,248,0.15);
-  border: 1px solid rgba(129,140,248,0.3);
-  color: var(--primary);
-}
+.btn-ghost:hover { background: var(--card2); color: var(--text); border-color: rgba(255,255,255,.14); }
 
 /* Tips */
 .tips {
-  padding: 10px 14px;
-  background: rgba(34,211,238,0.06);
-  border: 1px solid rgba(34,211,238,0.15);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.6;
+  padding: 10px 13px;
+  background: var(--cyanD); border: 1px solid rgba(34,211,238,.16);
+  border-radius: var(--rsm); font-size: 12px; color: var(--muted); line-height: 1.7;
 }
-
 .tips strong { color: var(--cyan); }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-
-/* Responsive */
-@media (max-width: 900px) {
-  .workspace { grid-template-columns: 1fr; height: auto; }
-  .left-panel { border-right: none; border-bottom: 1px solid var(--border); }
-  .right-panel { height: 60vh; }
+/* ── Right / Output Panel ───────────────────────────────────────── */
+.right-panel {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  order: -1; /* diagram shows at TOP on mobile */
 }
+@media (min-width: 860px) {
+  .right-panel { order: 0; }
+}
+
+.panel-tabs {
+  display: flex; border-bottom: 1px solid var(--border);
+  padding: 0 16px; flex-shrink: 0;
+}
+.tab {
+  padding: 12px 18px; border-bottom: 2px solid transparent;
+  font-size: 13px; font-weight: 600; color: var(--muted);
+  cursor: pointer; transition: all .2s; user-select: none;
+  touch-action: manipulation;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--pri); border-bottom-color: var(--pri); }
+.tab-space { flex: 1; }
+.panel-acts { display: flex; gap: 6px; align-items: center; }
+.icon-btn {
+  width: 30px; height: 30px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; transition: all .2s; outline: none;
+  touch-action: manipulation;
+}
+.icon-btn:hover { background: var(--card2); color: var(--text); border-color: rgba(255,255,255,.14); }
+
+/* Preview & Code panes */
+.preview-pane, .code-pane {
+  flex: 1; overflow: hidden; display: none; flex-direction: column;
+  position: relative;
+}
+.preview-pane.active, .code-pane.active { display: flex; }
+
+.placeholder {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 10px; padding: 32px 24px;
+  color: var(--muted2); text-align: center; flex: 1;
+}
+.placeholder .big { font-size: 56px; opacity: .25; }
+.placeholder p { font-size: 13px; max-width: 240px; line-height: 1.6; }
+
+#diag-wrap {
+  flex: 1; overflow: auto;
+  display: none; align-items: flex-start; justify-content: center; padding: 20px;
+}
+#diag-wrap.on { display: flex; }
+#diag-wrap svg { max-width: 100%; height: auto; border-radius: 8px; filter: drop-shadow(0 4px 20px rgba(0,0,0,.5)); }
+
+.loading-ov {
+  position: absolute; inset: 0;
+  background: rgba(7,7,26,.85); backdrop-filter: blur(4px);
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center; gap: 14px; z-index: 10;
+}
+.loading-ov.on { display: flex; }
+.spinner {
+  width: 44px; height: 44px;
+  border: 3px solid var(--border); border-top-color: var(--pri);
+  border-radius: 50%; animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-txt { font-size: 13px; color: var(--muted); font-weight: 500; }
+
+/* Progress bar for audio upload */
+.upload-bar {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+  background: var(--border); display: none;
+}
+.upload-bar.on { display: block; }
+.upload-fill {
+  height: 100%; background: linear-gradient(90deg, var(--pri), var(--cyan));
+  border-radius: 2px; animation: uploadPulse 1.5s ease-in-out infinite;
+}
+@keyframes uploadPulse { 0%,100%{width:20%} 50%{width:85%} }
+
+/* Code editor */
+.code-editor {
+  flex: 1; padding: 18px 20px;
+  background: transparent; border: none;
+  color: var(--cyan);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 13px; line-height: 1.75; resize: none; outline: none; overflow-y: auto;
+}
+.code-editor::placeholder { color: var(--muted2); }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 20px; right: 16px;
+  padding: 11px 18px; border-radius: var(--rsm);
+  font-size: 13px; font-weight: 500;
+  display: flex; align-items: center; gap: 9px;
+  z-index: 1000; max-width: 320px;
+  transform: translateY(80px); opacity: 0;
+  transition: all .3s cubic-bezier(.34,1.56,.64,1);
+  box-shadow: 0 4px 24px rgba(0,0,0,.4);
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.ok  { background: rgba(52,211,153,.12); border:1px solid rgba(52,211,153,.3); color: var(--green); }
+.toast.err { background: rgba(248,113,113,.12); border:1px solid rgba(248,113,113,.3); color: var(--red); }
+.toast.inf { background: var(--priD);           border:1px solid rgba(129,140,248,.3); color: var(--pri); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.09); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.18); }
 </style>
 </head>
 <body>
@@ -672,123 +420,119 @@ header {
   <header>
     <div class="logo">
       <div class="logo-icon">🎤</div>
-      <div>
-        <div class="logo-text">VoiceChart<span class="logo-sub"> 语音流程图</span></div>
-      </div>
+      <div class="logo-name">VoiceChart</div>
     </div>
-    <div style="flex:1"></div>
+    <div class="mode-badge" id="modeBadge">
+      <span class="mode-dot"></span>
+      <span id="modeText">检测中…</span>
+    </div>
     <div class="lang-toggle">
       <button class="lang-btn active" onclick="setLang('zh-CN')">中文</button>
       <button class="lang-btn" onclick="setLang('en-US')">EN</button>
     </div>
   </header>
 
-  <!-- Style Selector -->
+  <!-- Style Bar -->
   <div class="style-bar" id="styleBar"></div>
 
   <!-- Workspace -->
   <div class="workspace">
 
-    <!-- Left Panel -->
+    <!-- Input Panel -->
     <div class="left-panel">
 
-      <!-- Mic Section -->
-      <div class="mic-section">
-        <div class="mic-ring-wrapper">
-          <div class="mic-ring" id="ring1"></div>
-          <div class="mic-ring" id="ring2"></div>
-          <div class="mic-ring" id="ring3"></div>
-          <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="点击开始/停止录音">
-            🎤
-          </button>
+      <!-- Mic -->
+      <div class="mic-area">
+        <div class="mic-ring-wrap">
+          <div class="ring" id="r1"></div>
+          <div class="ring" id="r2"></div>
+          <div class="ring" id="r3"></div>
+          <button class="mic-btn" id="micBtn" onclick="toggleMic()">🎤</button>
         </div>
         <div class="waveform" id="waveform">
-          <div class="wave-bar"></div><div class="wave-bar"></div>
-          <div class="wave-bar"></div><div class="wave-bar"></div>
-          <div class="wave-bar"></div><div class="wave-bar"></div>
-          <div class="wave-bar"></div><div class="wave-bar"></div>
-          <div class="wave-bar"></div><div class="wave-bar"></div>
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+          <div class="wb"></div>
+        </div>
+        <div class="rec-timer" id="recTimer">
+          <div class="rec-dot"></div>
+          <span id="recTime">00:00</span>
+          <span style="color:var(--muted);font-weight:400">点击停止</span>
         </div>
         <div class="mic-status" id="micStatus">点击麦克风开始说话</div>
+        <div class="upload-bar" id="uploadBar"><div class="upload-fill"></div></div>
       </div>
 
-      <!-- Interim / Recognized Text -->
-      <div class="text-section">
-        <div class="section-label">
-          <span>识别内容</span>
+      <!-- Text -->
+      <div>
+        <div class="section-label" style="margin-bottom:7px">
+          <span>识别 / 输入</span>
           <span id="charCount" style="color:var(--muted2);font-size:11px"></span>
         </div>
-        <div class="interim-text" id="interimText"></div>
-        <textarea
-          class="text-area"
-          id="speechText"
-          placeholder="语音识别结果会出现在这里，也可以直接在此输入文字描述..."
-          oninput="onTextInput()"
-        ></textarea>
+        <div class="interim" id="interim"></div>
+        <textarea class="input-ta" id="speechText"
+          placeholder="语音识别结果会出现在这里，或直接键入描述…"
+          oninput="onTextInput()"></textarea>
       </div>
 
       <!-- Actions -->
       <div class="actions">
-        <button class="btn btn-primary" id="generateBtn" onclick="generate()" disabled>
-          <span id="generateIcon">✦</span>
-          <span id="generateLabel">生成图表</span>
+        <button class="btn btn-pri" id="genBtn" onclick="generate()" disabled>
+          <span id="genIcon">✦</span>
+          <span id="genLabel">生成图表</span>
         </button>
         <button class="btn btn-ghost" onclick="clearAll()" title="清空">⊘</button>
       </div>
 
       <!-- Tips -->
-      <div class="tips">
-        <strong>示例描述：</strong><br>
-        "用户登录系统，输入账号密码，系统验证通过后跳转到首页，验证失败提示重新输入"<br><br>
-        <strong>提示：</strong>Chrome/Edge 浏览器支持语音识别，需允许麦克风权限
+      <div class="tips" id="tipsBox">
+        <strong>示例：</strong> "用户登录，输入账号密码，验证通过跳转首页，失败提示重试"<br>
+        <strong>快捷键：</strong> <kbd>Ctrl+Enter</kbd> 生成 &nbsp;·&nbsp; <kbd>Ctrl+M</kbd> 录音
       </div>
-
     </div>
 
-    <!-- Right Panel -->
+    <!-- Output Panel -->
     <div class="right-panel">
 
-      <!-- Tabs -->
       <div class="panel-tabs">
-        <div class="tab active" onclick="switchTab('preview')">预览</div>
-        <div class="tab" onclick="switchTab('code')">Mermaid 代码</div>
-        <div class="tab-spacer"></div>
-        <div class="panel-actions">
-          <button class="icon-btn" onclick="copyCode()" title="复制代码">⎘</button>
-          <button class="icon-btn" onclick="exportSVG()" title="导出 SVG">↓</button>
+        <div class="tab active" id="tabPreview" onclick="switchTab('preview')">预览</div>
+        <div class="tab" id="tabCode" onclick="switchTab('code')">Mermaid 代码</div>
+        <div class="tab-space"></div>
+        <div class="panel-acts">
+          <button class="icon-btn" onclick="zoomIn()"  title="放大">＋</button>
+          <button class="icon-btn" onclick="zoomOut()" title="缩小">－</button>
           <button class="icon-btn" onclick="zoomFit()" title="适应窗口">⊡</button>
+          <button class="icon-btn" onclick="copyCode()"  title="复制代码">⎘</button>
+          <button class="icon-btn" onclick="exportSVG()" title="下载 SVG">↓</button>
+          <button class="icon-btn" onclick="exportPNG()" title="下载 PNG">🖼</button>
         </div>
       </div>
 
-      <!-- Preview Pane -->
+      <!-- Preview -->
       <div class="preview-pane active" id="previewPane">
-        <div class="preview-placeholder" id="placeholder">
-          <div class="big-icon">📊</div>
-          <p>对着麦克风描述你的流程，AI 将自动生成对应的图表</p>
+        <div class="placeholder" id="placeholder">
+          <div class="big">📊</div>
+          <p>对着麦克风描述你的想法，AI 将自动生成流程图</p>
         </div>
-        <div id="diagram-container" style="display:none"></div>
-        <div class="loading-overlay" id="loadingOverlay">
+        <div id="diag-wrap"></div>
+        <div class="loading-ov" id="loadingOv">
           <div class="spinner"></div>
-          <div class="loading-text">DeepSeek 正在生成图表...</div>
+          <div class="loading-txt" id="loadingTxt">DeepSeek 正在生成图表…</div>
         </div>
       </div>
 
-      <!-- Code Pane -->
+      <!-- Code -->
       <div class="code-pane" id="codePane">
-        <textarea
-          class="code-editor"
-          id="codeEditor"
-          placeholder="Mermaid 代码将在生成后显示在这里，你也可以直接编辑..."
-          oninput="onCodeEdit()"
-          spellcheck="false"
-        ></textarea>
+        <textarea class="code-editor" id="codeEditor"
+          placeholder="Mermaid 代码生成后显示在这里，可直接编辑实时预览…"
+          oninput="onCodeEdit()" spellcheck="false"></textarea>
       </div>
 
     </div>
   </div>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -798,372 +542,525 @@ mermaid.initialize({
   startOnLoad: false,
   theme: 'dark',
   themeVariables: {
-    background: '#07071a',
-    primaryColor: '#3730a3',
-    primaryTextColor: '#f1f5f9',
-    primaryBorderColor: '#818cf8',
-    lineColor: '#818cf8',
-    secondaryColor: '#1e3a5f',
-    tertiaryColor: '#0f2040',
-    clusterBkg: 'rgba(129,140,248,0.05)',
-    clusterBorder: 'rgba(129,140,248,0.3)',
+    background:          '#07071a',
+    primaryColor:        '#3730a3',
+    primaryTextColor:    '#f1f5f9',
+    primaryBorderColor:  '#818cf8',
+    lineColor:           '#818cf8',
+    secondaryColor:      '#1e3a5f',
+    tertiaryColor:       '#0f2040',
     edgeLabelBackground: '#0d0d2b',
-    nodeTextColor: '#f1f5f9',
-    fontFamily: 'Inter, system-ui, sans-serif',
+    nodeTextColor:       '#f1f5f9',
+    fontFamily:          'Inter, system-ui, sans-serif',
   },
   flowchart: { curve: 'basis', padding: 20 },
-  sequence: { actorMargin: 60, mirrorActors: false },
+  sequence:  { actorMargin: 60, mirrorActors: false },
 });
+window.__mmd = mermaid;
 
-window._mermaid = mermaid;
-
-// ── State ──
-const state = {
-  style: 'flowchart',
-  lang: 'zh-CN',
-  listening: false,
-  recognition: null,
-  finalText: '',
-  renderCount: 0,
-};
-
-// ── Styles Config ──
+// ── Constants ──────────────────────────────────────────────────────
 const STYLES = [
-  { id: 'flowchart', name: '流程图',    icon: '⬡' },
-  { id: 'sequence',  name: '时序图',    icon: '↔' },
-  { id: 'mindmap',   name: '思维导图',  icon: '✦' },
-  { id: 'class',     name: '类图',      icon: '◫' },
-  { id: 'state',     name: '状态图',    icon: '◈' },
-  { id: 'er',        name: 'ER 图',     icon: '⊞' },
-  { id: 'gantt',     name: '甘特图',    icon: '▦' },
-  { id: 'pie',       name: '饼图',      icon: '◔' },
+  { id:'flowchart', name:'流程图',   icon:'⬡' },
+  { id:'sequence',  name:'时序图',   icon:'↔' },
+  { id:'mindmap',   name:'思维导图', icon:'✦' },
+  { id:'class',     name:'类图',     icon:'◫' },
+  { id:'state',     name:'状态图',   icon:'◈' },
+  { id:'er',        name:'ER 图',    icon:'⊞' },
+  { id:'gantt',     name:'甘特图',   icon:'▦' },
+  { id:'pie',       name:'饼图',     icon:'◔' },
 ];
 
-// ── Init Style Bar ──
-function initStyleBar() {
-  const bar = document.getElementById('styleBar');
-  bar.innerHTML = STYLES.map(s => `
-    <button class="style-pill${s.id === state.style ? ' active' : ''}"
-      onclick="selectStyle('${s.id}')"
-      title="${s.id}">
-      <i class="pill-icon">${s.icon}</i>${s.name}
-    </button>
-  `).join('');
-}
-
-window.selectStyle = (id) => {
-  state.style = id;
-  document.querySelectorAll('.style-pill').forEach(p => p.classList.remove('active'));
-  document.querySelector(`.style-pill[onclick*="${id}"]`)?.classList.add('active');
+// ── State ──────────────────────────────────────────────────────────
+const S = {
+  style:         'flowchart',
+  lang:          'zh-CN',
+  recMode:       null,   // 'speech' | 'media' | 'none'
+  listening:     false,
+  recognition:   null,
+  mediaRecorder: null,
+  audioChunks:   [],
+  timerID:       null,
+  timerSecs:     0,
+  finalText:     '',
+  renderN:       0,
+  whisper:       false,
 };
 
-// ── Speech Recognition ──
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const HAS_SPEECH = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+const HAS_MEDIA  = !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
 
-function setupRecognition() {
-  if (!SpeechRecognition) {
-    document.getElementById('micBtn').title = '浏览器不支持语音识别，请使用 Chrome/Edge';
-    document.getElementById('micBtn').style.opacity = '0.5';
-    document.getElementById('micStatus').textContent = '浏览器不支持语音识别';
-    return;
+// ── Init ───────────────────────────────────────────────────────────
+async function init() {
+  // Build style pills
+  const bar = document.getElementById('styleBar');
+  bar.innerHTML = STYLES.map(s =>
+    `<button class="spill${s.id===S.style?' active':''}"
+       onclick="selectStyle('${s.id}')">${s.icon} ${s.name}</button>`
+  ).join('');
+
+  // Check backend capabilities
+  try {
+    const r = await fetch('/api/capabilities');
+    const d = await r.json();
+    S.whisper = d.whisper;
+  } catch {}
+
+  // Determine recording mode
+  if (HAS_SPEECH) {
+    S.recMode = 'speech';
+    setBadge('speech', '实时识别');
+  } else if (HAS_MEDIA && S.whisper) {
+    S.recMode = 'media';
+    setBadge('media', 'Whisper 识别');
+  } else if (HAS_MEDIA) {
+    S.recMode = 'media';
+    setBadge('media', '服务端识别');
+  } else {
+    S.recMode = 'none';
+    setBadge('none', '仅文字输入');
+    document.getElementById('micBtn').style.opacity = '.35';
+    document.getElementById('micStatus').textContent = '该浏览器不支持语音输入';
   }
 
-  const rec = new SpeechRecognition();
-  rec.lang = state.lang;
+  // Tips
+  if (S.recMode === 'speech') {
+    document.getElementById('tipsBox').innerHTML =
+      '<strong>实时识别</strong> Chrome/Edge 原生支持，说话即转文字<br>' +
+      '<strong>快捷键：</strong> <kbd>Ctrl+Enter</kbd> 生成 · <kbd>Ctrl+M</kbd> 录音';
+  } else if (S.recMode === 'media') {
+    document.getElementById('tipsBox').innerHTML =
+      '<strong>跨浏览器录音</strong> 点击开始录音，再次点击停止并识别<br>' +
+      'Firefox · Safari · 手机浏览器均可使用';
+  }
+}
+
+function setBadge(cls, txt) {
+  const b = document.getElementById('modeBadge');
+  const t = document.getElementById('modeText');
+  b.className = `mode-badge ${cls}`;
+  t.textContent = txt;
+}
+
+// ── Style Select ───────────────────────────────────────────────────
+window.selectStyle = id => {
+  S.style = id;
+  document.querySelectorAll('.spill').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.spill').forEach(b => {
+    if (b.textContent.trim().includes(STYLES.find(s=>s.id===id).name)) b.classList.add('active');
+  });
+};
+
+// ── Language ───────────────────────────────────────────────────────
+window.setLang = lang => {
+  S.lang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b =>
+    b.classList.toggle('active', b.onclick?.toString().includes(lang))
+  );
+  if (S.recognition) S.recognition.lang = lang;
+};
+
+// ── Mic Toggle ─────────────────────────────────────────────────────
+window.toggleMic = async () => {
+  if (navigator.vibrate) navigator.vibrate(30);
+  if (S.recMode === 'none') { toast('该浏览器不支持语音输入，请直接键入文字', 'inf'); return; }
+  if (S.listening) {
+    stopRec();
+  } else {
+    S.recMode === 'speech' ? startSpeech() : await startMedia();
+  }
+};
+
+// ── Web Speech API ─────────────────────────────────────────────────
+function startSpeech() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const rec = new SR();
+  rec.lang = S.lang;
   rec.continuous = true;
   rec.interimResults = true;
-  rec.maxAlternatives = 1;
+  S.recognition = rec;
 
-  rec.onstart = () => {
-    state.listening = true;
-    setMicState(true);
-  };
+  rec.onstart = () => { S.listening = true; setMicUI(true); };
 
-  rec.onresult = (e) => {
-    let interim = '';
-    let finalAdded = '';
-
+  rec.onresult = e => {
+    let inter = '', fin = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const t = e.results[i][0].transcript;
-      if (e.results[i].isFinal) {
-        finalAdded += t;
-      } else {
-        interim += t;
-      }
+      e.results[i].isFinal ? (fin += t) : (inter += t);
     }
-
-    if (finalAdded) {
-      state.finalText += (state.finalText ? '，' : '') + finalAdded.trim();
-      document.getElementById('speechText').value = state.finalText;
+    if (fin) {
+      S.finalText += (S.finalText ? '，' : '') + fin.trim();
+      document.getElementById('speechText').value = S.finalText;
       onTextInput();
     }
+    const el = document.getElementById('interim');
+    if (inter) { el.textContent = inter; el.classList.add('on'); }
+    else        { el.textContent = ''; el.classList.remove('on'); }
+  };
 
-    const interimEl = document.getElementById('interimText');
-    if (interim) {
-      interimEl.textContent = interim;
-      interimEl.classList.add('visible');
+  rec.onerror = e => {
+    if (e.error === 'not-allowed') toast('请允许麦克风权限', 'err');
+    else if (e.error !== 'aborted') toast(`识别错误: ${e.error}`, 'err');
+    stopRec();
+  };
+
+  rec.onend = () => { if (S.listening) { try { rec.start(); } catch { stopRec(); } } };
+
+  try { rec.start(); } catch(e) { toast('无法启动语音识别: ' + e.message, 'err'); }
+}
+
+function stopSpeech() {
+  S.listening = false;
+  S.recognition?.stop();
+  S.recognition = null;
+  document.getElementById('interim').classList.remove('on');
+  setMicUI(false);
+}
+
+// ── MediaRecorder ──────────────────────────────────────────────────
+async function startMedia() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mime = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4']
+      .find(m => MediaRecorder.isTypeSupported(m)) ?? '';
+    S.mediaRecorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
+    S.audioChunks = [];
+
+    S.mediaRecorder.ondataavailable = e => { if (e.data.size > 0) S.audioChunks.push(e.data); };
+    S.mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      await transcribeAudio();
+    };
+
+    S.mediaRecorder.start(100);
+    S.listening = true;
+    setMicUI(true, 'media');
+    startTimer();
+  } catch (e) {
+    toast(e.name === 'NotAllowedError' ? '请允许麦克风权限' : '无法访问麦克风: ' + e.message, 'err');
+  }
+}
+
+function stopMedia() {
+  S.listening = false;
+  stopTimer();
+  if (S.mediaRecorder?.state !== 'inactive') S.mediaRecorder?.stop();
+  setMicUI(false);
+}
+
+async function transcribeAudio() {
+  if (!S.audioChunks.length) return;
+  const mime = S.mediaRecorder?.mimeType || 'audio/webm';
+  const blob = new Blob(S.audioChunks, { type: mime });
+
+  setStatus('正在识别…', 'busy');
+  document.getElementById('uploadBar').classList.add('on');
+
+  try {
+    const fd = new FormData();
+    fd.append('audio', blob, 'rec.' + (mime.includes('mp4')?'mp4':mime.includes('ogg')?'ogg':'webm'));
+    fd.append('lang', S.lang);
+
+    const r = await fetch('/api/transcribe', { method:'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || '识别失败');
+
+    if (d.text) {
+      const ta = document.getElementById('speechText');
+      ta.value = ta.value.trim() ? ta.value + '，' + d.text : d.text;
+      S.finalText = ta.value;
+      onTextInput();
+      setStatus('识别完成', 'done');
+      toast('语音识别完成', 'ok');
     } else {
-      interimEl.classList.remove('visible');
-      interimEl.textContent = '';
+      setStatus('未识别到内容', '');
     }
-  };
-
-  rec.onerror = (e) => {
-    if (e.error === 'not-allowed') {
-      showToast('请允许浏览器访问麦克风', 'error');
-    } else if (e.error !== 'aborted') {
-      showToast(`语音识别错误: ${e.error}`, 'error');
-    }
-    stopMic();
-  };
-
-  rec.onend = () => {
-    if (state.listening) {
-      try { rec.start(); } catch(err) { stopMic(); }
-    }
-  };
-
-  state.recognition = rec;
+  } catch(e) {
+    toast('识别失败: ' + e.message, 'err');
+    setStatus('识别失败', '');
+  } finally {
+    document.getElementById('uploadBar').classList.remove('on');
+  }
 }
 
-function stopMic() {
-  state.listening = false;
-  setMicState(false);
-  document.getElementById('interimText').classList.remove('visible');
+// ── Rec Timer ─────────────────────────────────────────────────────
+function startTimer() {
+  S.timerSecs = 0;
+  const el = document.getElementById('recTimer');
+  el.classList.add('on');
+  S.timerID = setInterval(() => {
+    S.timerSecs++;
+    const m = String(Math.floor(S.timerSecs/60)).padStart(2,'0');
+    const s = String(S.timerSecs%60).padStart(2,'0');
+    document.getElementById('recTime').textContent = `${m}:${s}`;
+  }, 1000);
+}
+function stopTimer() {
+  clearInterval(S.timerID);
+  document.getElementById('recTimer').classList.remove('on');
 }
 
-function setMicState(on) {
+// ── Unified stop ─────────────────────────────────────────────────
+function stopRec() {
+  if (S.recMode === 'speech') stopSpeech();
+  else stopMedia();
+}
+
+// ── Mic UI ────────────────────────────────────────────────────────
+function setMicUI(on, mode) {
   const btn = document.getElementById('micBtn');
-  const status = document.getElementById('micStatus');
-  const waveform = document.getElementById('waveform');
-  const rings = [document.getElementById('ring1'), document.getElementById('ring2'), document.getElementById('ring3')];
+  const wv  = document.getElementById('waveform');
+  const rings = ['r1','r2','r3'].map(id => document.getElementById(id));
 
   if (on) {
-    btn.classList.add('listening');
-    btn.textContent = '⏹';
-    status.textContent = '正在聆听... 点击停止';
-    status.className = 'mic-status listening';
-    waveform.classList.add('active');
-    rings.forEach(r => r.classList.add('pulse'));
+    btn.classList.add('rec'); btn.textContent = '⏹';
+    wv.classList.add('on');
+    rings.forEach(r => r.classList.add('go'));
+    if (mode === 'media') {
+      setStatus('录音中 · 点击停止', 'rec');
+    } else {
+      setStatus('正在聆听… 点击停止', 'rec');
+    }
   } else {
-    btn.classList.remove('listening');
-    btn.textContent = '🎤';
-    status.className = 'mic-status';
-    waveform.classList.remove('active');
-    rings.forEach(r => r.classList.remove('pulse'));
-    const hasText = document.getElementById('speechText').value.trim();
-    status.textContent = hasText ? '识别完成，可以生成图表' : '点击麦克风开始说话';
-    if (hasText) status.className = 'mic-status done';
+    btn.classList.remove('rec'); btn.textContent = '🎤';
+    wv.classList.remove('on');
+    rings.forEach(r => r.classList.remove('go'));
+    const has = document.getElementById('speechText').value.trim();
+    if (!has) setStatus('点击麦克风开始说话', '');
   }
 }
 
-window.toggleMic = () => {
-  if (!SpeechRecognition) {
-    showToast('当前浏览器不支持语音识别，请使用 Chrome 或 Edge', 'error');
-    return;
-  }
-  if (state.listening) {
-    state.listening = false;
-    state.recognition?.stop();
-    stopMic();
-  } else {
-    setupRecognition();
-    state.finalText = document.getElementById('speechText').value;
-    try {
-      state.recognition.start();
-    } catch(e) {
-      setupRecognition();
-      state.recognition.start();
-    }
-  }
-};
+function setStatus(txt, cls) {
+  const el = document.getElementById('micStatus');
+  el.textContent = txt;
+  el.className = `mic-status ${cls}`;
+}
 
-window.setLang = (lang) => {
-  state.lang = lang;
-  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector(`.lang-btn[onclick*="${lang}"]`)?.classList.add('active');
-  if (state.recognition) state.recognition.lang = lang;
-  if (state.listening) {
-    state.recognition?.stop();
-    setTimeout(() => {
-      setupRecognition();
-      state.recognition.start();
-    }, 300);
-  }
-};
-
-// ── Text Input ──
+// ── Text Input ────────────────────────────────────────────────────
 window.onTextInput = () => {
-  const text = document.getElementById('speechText').value.trim();
-  const btn = document.getElementById('generateBtn');
-  btn.disabled = !text;
-  const count = document.getElementById('charCount');
-  count.textContent = text.length > 0 ? `${text.length} 字` : '';
+  const v = document.getElementById('speechText').value.trim();
+  document.getElementById('genBtn').disabled = !v;
+  document.getElementById('charCount').textContent = v.length ? `${v.length} 字` : '';
 };
 
-// ── Generate ──
+// ── Generate ──────────────────────────────────────────────────────
 window.generate = async () => {
   const text = document.getElementById('speechText').value.trim();
   if (!text) return;
 
-  showLoading(true);
+  showLoading(true, 'DeepSeek 正在生成图表…');
   setGenerating(true);
 
   try {
-    const res = await fetch('/api/generate', {
+    const r = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, style: state.style }),
+      body: JSON.stringify({ text, style: S.style }),
     });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || '生成失败');
-
-    document.getElementById('codeEditor').value = data.code;
-    await renderDiagram(data.code);
-    showToast('图表生成成功！', 'success');
-
-  } catch (err) {
-    showToast(err.message, 'error');
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || '生成失败');
+    document.getElementById('codeEditor').value = d.code;
+    await renderDiagram(d.code);
+    toast('图表生成成功！', 'ok');
+  } catch(e) {
+    toast(e.message, 'err');
   } finally {
     showLoading(false);
     setGenerating(false);
   }
 };
 
-// ── Mermaid Render ──
+// ── Mermaid Render ────────────────────────────────────────────────
 async function renderDiagram(code) {
   if (!code?.trim()) return;
-
-  const container = document.getElementById('diagram-container');
-  const placeholder = document.getElementById('placeholder');
-
-  const id = 'md-' + (++state.renderCount);
-
+  const id = 'md' + (++S.renderN);
+  const wrap = document.getElementById('diag-wrap');
+  const ph   = document.getElementById('placeholder');
   try {
-    const { svg } = await window._mermaid.render(id, code);
-    container.innerHTML = svg;
-    container.style.display = 'flex';
-    placeholder.style.display = 'none';
-
-    const svgEl = container.querySelector('svg');
-    if (svgEl) {
-      svgEl.style.maxWidth = '100%';
-      svgEl.removeAttribute('height');
-    }
-  } catch (err) {
-    showToast('Mermaid 渲染失败，请检查代码格式', 'error');
-    console.error('Mermaid error:', err);
+    const { svg } = await window.__mmd.render(id, code);
+    wrap.innerHTML = svg;
+    wrap.classList.add('on');
+    ph.style.display = 'none';
+    const s = wrap.querySelector('svg');
+    if (s) { s.style.maxWidth='100%'; s.removeAttribute('height'); }
+  } catch(e) {
+    toast('Mermaid 渲染失败，请检查代码格式', 'err');
   }
 }
 
-// ── Code Editor ──
-let codeEditTimer;
+// ── Code Edit Live Preview ────────────────────────────────────────
+let codeT;
 window.onCodeEdit = () => {
-  clearTimeout(codeEditTimer);
-  codeEditTimer = setTimeout(() => {
+  clearTimeout(codeT);
+  codeT = setTimeout(() => {
     const code = document.getElementById('codeEditor').value.trim();
     if (code) renderDiagram(code);
-  }, 800);
+  }, 700);
 };
 
-// ── Tabs ──
-window.switchTab = (tab) => {
-  document.querySelectorAll('.tab').forEach((t, i) => {
-    t.classList.toggle('active', (i === 0) === (tab === 'preview'));
-  });
-  document.getElementById('previewPane').classList.toggle('active', tab === 'preview');
-  document.getElementById('codePane').classList.toggle('active', tab === 'code');
+// ── Tabs ──────────────────────────────────────────────────────────
+window.switchTab = tab => {
+  document.getElementById('tabPreview').classList.toggle('active', tab==='preview');
+  document.getElementById('tabCode').classList.toggle('active', tab==='code');
+  document.getElementById('previewPane').classList.toggle('active', tab==='preview');
+  document.getElementById('codePane').classList.toggle('active', tab==='code');
 };
 
-// ── Export ──
-window.copyCode = async () => {
-  const code = document.getElementById('codeEditor').value;
-  if (!code) { showToast('没有代码可复制', 'info'); return; }
-  try {
-    await navigator.clipboard.writeText(code);
-    showToast('代码已复制到剪贴板', 'success');
-  } catch {
-    showToast('复制失败', 'error');
+// ── Zoom ─────────────────────────────────────────────────────────
+const ZOOM = { scale: 1 };
+
+function zoomTo(s) {
+  ZOOM.scale = Math.max(0.15, Math.min(8, s));
+  const svg = document.querySelector('#diag-wrap svg');
+  if (!svg) return;
+  svg.style.transform = `scale(${ZOOM.scale})`;
+  svg.style.transformOrigin = 'top center';
+  svg.style.maxWidth = 'none';
+  svg.style.width = 'auto';
+}
+
+window.zoomIn  = () => zoomTo(ZOOM.scale * 1.25);
+window.zoomOut = () => zoomTo(ZOOM.scale / 1.25);
+window.zoomFit = () => {
+  ZOOM.scale = 1;
+  const svg = document.querySelector('#diag-wrap svg');
+  if (svg) {
+    svg.style.transform = '';
+    svg.style.maxWidth  = '100%';
+    svg.style.width     = '100%';
+    svg.style.height    = 'auto';
   }
+};
+
+// Mouse-wheel zoom on diagram
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('diag-wrap').addEventListener('wheel', e => {
+    if (!document.querySelector('#diag-wrap svg')) return;
+    e.preventDefault();
+    zoomTo(ZOOM.scale * (e.deltaY < 0 ? 1.12 : 0.88));
+  }, { passive: false });
+
+  // Pinch-to-zoom on mobile
+  let lastPinch = 0;
+  const dw = document.getElementById('diag-wrap');
+  dw.addEventListener('touchstart', e => {
+    if (e.touches.length === 2)
+      lastPinch = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                             e.touches[0].clientY - e.touches[1].clientY);
+  }, { passive: true });
+  dw.addEventListener('touchmove', e => {
+    if (e.touches.length !== 2) return;
+    e.preventDefault();
+    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                         e.touches[0].clientY - e.touches[1].clientY);
+    if (lastPinch > 0) zoomTo(ZOOM.scale * (d / lastPinch));
+    lastPinch = d;
+  }, { passive: false });
+  dw.addEventListener('touchend', () => { lastPinch = 0; }, { passive: true });
+});
+
+// ── Export ────────────────────────────────────────────────────────
+window.copyCode = async () => {
+  const c = document.getElementById('codeEditor').value;
+  if (!c) { toast('没有代码可复制', 'inf'); return; }
+  try { await navigator.clipboard.writeText(c); toast('代码已复制', 'ok'); }
+  catch { toast('复制失败', 'err'); }
 };
 
 window.exportSVG = () => {
-  const svg = document.querySelector('#diagram-container svg');
-  if (!svg) { showToast('请先生成图表', 'info'); return; }
-  const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `voicechart-${Date.now()}.svg`;
+  const svg = document.querySelector('#diag-wrap svg');
+  if (!svg) { toast('请先生成图表', 'inf'); return; }
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([svg.outerHTML], { type: 'image/svg+xml' })),
+    download: `voicechart-${Date.now()}.svg`,
+  });
   a.click();
-  showToast('SVG 已下载', 'success');
+  toast('SVG 已下载', 'ok');
 };
 
-window.zoomFit = () => {
-  const svg = document.querySelector('#diagram-container svg');
-  if (svg) {
-    svg.style.maxWidth = '100%';
-    svg.style.width = '100%';
-    svg.style.height = 'auto';
-  }
+window.exportPNG = () => {
+  const svg = document.querySelector('#diag-wrap svg');
+  if (!svg) { toast('请先生成图表', 'inf'); return; }
+  const dpr = Math.max(window.devicePixelRatio || 2, 2);
+  const w   = svg.getBoundingClientRect().width  || svg.clientWidth  || 800;
+  const h   = svg.getBoundingClientRect().height || svg.clientHeight || 600;
+  const url = URL.createObjectURL(
+    new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml;charset=utf-8' })
+  );
+  const canvas = document.createElement('canvas');
+  canvas.width  = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#07071a';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.scale(dpr, dpr);
+  const img = new Image();
+  img.onload = () => {
+    ctx.drawImage(img, 0, 0, w, h);
+    URL.revokeObjectURL(url);
+    Object.assign(document.createElement('a'), {
+      href: canvas.toDataURL('image/png'),
+      download: `voicechart-${Date.now()}.png`,
+    }).click();
+    toast('PNG 已下载', 'ok');
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); toast('PNG 导出失败，请尝试 SVG', 'err'); };
+  img.src = url;
 };
 
-// ── Clear ──
+// ── Clear ─────────────────────────────────────────────────────────
 window.clearAll = () => {
-  document.getElementById('speechText').value = '';
-  document.getElementById('codeEditor').value = '';
-  document.getElementById('interimText').textContent = '';
-  document.getElementById('interimText').classList.remove('visible');
-  document.getElementById('diagram-container').style.display = 'none';
-  document.getElementById('diagram-container').innerHTML = '';
-  document.getElementById('placeholder').style.display = 'flex';
-  document.getElementById('generateBtn').disabled = true;
+  if (S.listening) stopRec();
+  ['speechText','codeEditor'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('interim').classList.remove('on');
+  document.getElementById('diag-wrap').classList.remove('on');
+  document.getElementById('diag-wrap').innerHTML = '';
+  document.getElementById('placeholder').style.display = '';
+  document.getElementById('genBtn').disabled = true;
   document.getElementById('charCount').textContent = '';
-  state.finalText = '';
-  if (state.listening) { state.listening = false; state.recognition?.stop(); stopMic(); }
+  S.finalText = '';
+  setStatus('点击麦克风开始说话', '');
 };
 
-// ── UI Helpers ──
-function showLoading(on) {
-  document.getElementById('loadingOverlay').classList.toggle('visible', on);
+// ── UI Helpers ────────────────────────────────────────────────────
+function showLoading(on, txt='') {
+  const ov = document.getElementById('loadingOv');
+  ov.classList.toggle('on', on);
+  if (txt) document.getElementById('loadingTxt').textContent = txt;
 }
 
 function setGenerating(on) {
-  const btn = document.getElementById('generateBtn');
-  const icon = document.getElementById('generateIcon');
-  const label = document.getElementById('generateLabel');
+  const btn = document.getElementById('genBtn');
+  const icon = document.getElementById('genIcon');
   btn.disabled = on;
   icon.textContent = on ? '⟳' : '✦';
-  label.textContent = on ? '生成中...' : '生成图表';
-  if (on) icon.style.animation = 'spin 0.8s linear infinite';
-  else icon.style.animation = '';
+  icon.style.animation = on ? 'spin .8s linear infinite' : '';
+  document.getElementById('genLabel').textContent = on ? '生成中…' : '生成图表';
 }
 
-let toastTimer;
-window.showToast = (msg, type = 'info') => {
-  const t = document.getElementById('toast');
-  const icons = { success: '✓', error: '✕', info: 'ℹ' };
-  t.className = `toast ${type}`;
-  t.innerHTML = `<span>${icons[type]}</span> ${msg}`;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+let toastT;
+window.toast = (msg, type='inf') => {
+  const el = document.getElementById('toast');
+  const icons = { ok:'✓', err:'✕', inf:'ℹ' };
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${icons[type]||'ℹ'}</span> ${msg}`;
+  el.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 3200);
 };
 
-// ── Keyboard Shortcuts ──
-document.addEventListener('keydown', (e) => {
+// ── Keyboard Shortcuts ────────────────────────────────────────────
+document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
     e.preventDefault();
-    if (!document.getElementById('generateBtn').disabled) generate();
+    if (!document.getElementById('genBtn').disabled) generate();
   }
   if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
-    e.preventDefault();
-    toggleMic();
+    e.preventDefault(); toggleMic();
   }
 });
 
-// ── Init ──
-initStyleBar();
+// ── Boot ──────────────────────────────────────────────────────────
+init();
 </script>
 </body>
 </html>
